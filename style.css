@@ -3,7 +3,7 @@
 @page{size:A4;margin:17mm}
 @media print{main{padding:0}#print{padding:0;margin:0}#print h1{font-size:17pt}#print h2{font-size:11pt;margin:9px 0 3px;break-after:avoid}#print p,#print li{font:11pt/1.28 Georgia,serif;margin:4px 0}.signatures{break-inside:avoid;font-size:11pt}.annex{break-before:page;margin-top:0}}
 :root{color-scheme:light}body{background:#f7f5ef;color:#292a22}header{background:#fff;border-bottom:1px solid #e2ded1}header a,a{color:#6e471f}.mark{border-color:#b58a57}nav{border-color:#e2ded1}button,input,select,textarea{background:#fff;border-color:#bcb6a6}button:hover,button.active{background:#785027;color:#fff;border-color:#785027}small,.muted{color:#635f53}section,fieldset{background:#fff;border-color:#ded9cb}td,th{border-color:#e5e1d7}output{color:#6e471f}progress{accent-color:#916534}th{background:#f5f1e7}.logo{width:135px;height:64px;object-fit:contain;display:block}header a{display:inline-flex;align-items:center}#restoreJson,#restoreCsv{max-width:100%;margin-top:5px}
-header .logo{width:150px;height:105px;object-fit:contain}header{padding-block:4px}
+header .logo{width:150px;height:65px;object-fit:contain}header{padding-block:4px}
 .form-section{background:#fff;border:1px solid #ded9cb;border-radius:10px;padding:12px 15px}.form-section>summary{cursor:pointer;font-weight:600}.form-section[open]>summary{margin-bottom:12px}.status{display:inline-block;border-radius:999px;padding:3px 9px;font-size:.88rem;background:#eee;color:#333}.status-0{background:#eae5f9;color:#4f347d}.status-1{background:#dbeafe;color:#194b81}.status-2{background:#fff0cf;color:#704900}.status-3{background:#ddf5ef;color:#175749}.status-4{background:#e0e7ff;color:#31358a}.status-5{background:#dff1d8;color:#285b26}.status-6{background:#fce1e0;color:#8c2828}
 .header-right{margin-inline-start:auto;display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px 14px}
 header nav,#primary,#statusButtons{display:flex;flex-wrap:wrap;gap:8px}
@@ -21,7 +21,7 @@ header nav{padding:0;border:0}#primary button{font-weight:600}#statusButtons{mar
   small,.muted{color:var(--muted,#635f53)}
   button:hover,button.active{background:var(--accent,#785027);border-color:var(--accent,#785027);color:#fff}
 }
-@media(max-width:720px){.header-right{width:100%;justify-content:flex-start;margin-inline-start:0}header{gap:8px}header .logo{width:115px;height:80px}}
+@media(max-width:720px){.header-right{width:100%;justify-content:flex-start;margin-inline-start:0}header{gap:8px}header .logo{width:115px;height:65px}}
 .header-right{flex-direction:column;align-items:flex-end}
 .header-right #primary,.header-right nav{justify-content:flex-end}
 #statusButtons .status{background:revert;border-color:transparent}
@@ -34,3 +34,23 @@ header nav{padding:0;border:0}#primary button{font-weight:600}#statusButtons{mar
 #statusButtons .status-6{background:#fce1e0;color:#8c2828}
 #statusButtons .status[aria-pressed=true]{border-color:currentColor;box-shadow:inset 0 0 0 1px currentColor}
 @media(max-width:720px){.header-right{align-items:flex-start}.header-right #primary,.header-right nav{justify-content:flex-start}}
+[data-theme="Niebiesko-biały"]{--page:#eff6ff;--surface:#fff;--ink:#142b48;--muted:#415c79;--border:#adc7e6;--accent:#205a9d;--stripe:#e5effb}
+.contract .clause{text-align:center}
+@media screen{
+  body{font-size:calc(16px * var(--font,1));zoom:var(--scale,1)}
+  select[data-step-status="0"]{background:#edf0f4;color:#344054}
+  select[data-step-status="1"]{background:#fff0cf;color:#704900}
+  select[data-step-status="2"]{background:#dff1d8;color:#285b26}
+  select[data-step-status="3"]{background:#eae5f9;color:#4f347d}
+}
+.order-notes{min-height:0;resize:none;overflow:hidden}
+.contract-fields .grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,175px),1fr))}
+.contract-fields label,.contract-fields input,.contract-fields select{min-width:0;max-width:100%}
+.contract-fields select{text-overflow:ellipsis;white-space:nowrap}
+@media print{#pdfStatus{display:none}}
+.order-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#contractTemplate textarea{min-height:24rem;line-height:1.5;resize:vertical}
+.contract p{white-space:pre-wrap}
+
+.contract h1{text-align:center}
+@media screen{.contract [contenteditable]{outline:1px dashed var(--border,#bcb6a6);outline-offset:3px;white-space:pre-wrap}.contract [contenteditable]:focus{outline:2px solid var(--accent,#785027)}}

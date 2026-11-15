@@ -1,5 +1,33 @@
 # Historia wydań Lity Dąb Backoffice
 
+## v0.1.11
+
+- Edycja wygenerowanej umowy przed ponownym zapisem PDF, wyśrodkowane tytuły i logo o wysokości 65 px.
+
+## v0.1.10
+
+- Edytowalny szablon umowy i wybór logo.
+- Przyciski akcji przeniesione do właściwych ekranów.
+
+## v0.1.9
+
+- Podsumowanie przychodu, kosztu i dochodu w formularzu zamówienia.
+
+## v0.1.8
+
+- Edycja pozycji kosztowych zamówienia oraz opis dodatkowego kosztu.
+
+## v0.1.7
+
+- Foldery zamówień, zapis umów PDF i dodawanie załączników.
+- Koszty szacowane w zamówieniu i dodatkowe koszty w cenniku.
+- Poprawiony układ parametrów umowy i pola ustaleń.
+
+## v0.1.6
+
+- Zmiana rozmiaru czcionki, skali interfejsu i motyw niebiesko-biały.
+- Edytowalna oferta, parametry umowy i czytelniejszy formularz zamówienia.
+
 ## v0.1.5
 
 - Kolory filtrów zgodne ze statusami oraz przyciski akcji nad menu.
@@ -32,6 +60,10 @@
 
 - Pierwsza wersja PWA z dziesięcioma zamówieniami demonstracyjnymi.
 - Klienci, wyceny, realizacja, wydatki, szablony wiadomości i umowy PDF.
+
+
+
+
 
 
 
