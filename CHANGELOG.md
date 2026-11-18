@@ -1,5 +1,10 @@
 # Historia wydań Lity Dąb Backoffice
 
+## v0.1.12
+
+- Przygotowanie przesyłek Polkurier, wycena, nadawanie, numery listów i etykiety PDF.
+- Lokalny moduł API z pamięcią wyników nadawania.
+
 ## v0.1.11
 
 - Edycja wygenerowanej umowy przed ponownym zapisem PDF, wyśrodkowane tytuły i logo o wysokości 65 px.
@@ -60,6 +65,7 @@
 
 - Pierwsza wersja PWA z dziesięcioma zamówieniami demonstracyjnymi.
 - Klienci, wyceny, realizacja, wydatki, szablony wiadomości i umowy PDF.
+
 
 
 
