@@ -40,7 +40,7 @@ function realizationPlan(date,steps) {
   return [supply,supply,supply,preparation,addDays(ready,1)];
 }
 function addDemoExpenses() {
-  if(space!=='demo') return false;
+  if(space!=='demo'||sharedScope) return false;
   let added=false;
   const examples=[
     ['DEMO-002','Zakup stelaża',485],
@@ -60,6 +60,7 @@ function addDemoExpenses() {
 }
 function normalize() {
   data.tasks ??= [];
+  data.contractors ??= [];
   for(const o of data.orders) {
     if(!/^\d{10}$/.test(o.number)) {
       const number=nextNumber(o.date,data.orders);
@@ -79,6 +80,11 @@ function setDisplay(name,value) {
 function estimatedCost(o) {
   const {top,frame,basket,shipping,other}=orderCosts(o);
   return top+frame+basket+shipping+other;
+}
+function contractorCost(contractor,order) {
+  const quantity=contractor.method==='m²'?Number(order.length)*Number(order.width)/10000:
+    contractor.method==='m³'?Number(order.length)*Number(order.width)*Number(order.rates.thickness)/1000000:1;
+  return Math.round(quantity*Number(contractor.rate)*100)/100;
 }
 function orderCosts(o, useOverrides=true) {
   const r=o.rates;
@@ -120,6 +126,7 @@ function sample() {
 const pages = ['Zamówienia','Baza klientów','Koszty i przychody','Ustawienia','Zadania'];
 const themes=['Jasny','Dębowy','Leśny','Ciemny','Niebiesko-biały'];
 const sizes=['120 x 60','125 x 60','130 x 65','140 x 70','160 x 80'];
+let sharedScope=null;
 let space=localStorage.getItem('litydab:space')==='firma'?'firma':'demo', page=0, data;
 let theme=localStorage.getItem('litydab:theme')||'Jasny';
 document.documentElement.dataset.theme=theme;
@@ -127,9 +134,9 @@ for(const [name,options] of [['font',fontSizes],['scale',scales]]) {
   const stored=Number(localStorage.getItem('litydab:'+name));
   document.documentElement.style.setProperty('--'+name,(options.includes(stored)?stored:100)/100);
 }
-const key = () => 'litydab:'+space;
-function load() { data = JSON.parse(localStorage.getItem(key()) || 'null') || (space==='demo'?sample():fresh()); normalize(); const added=addDemoExpenses(); if(added||!localStorage.getItem(key())) save(); }
-function save() { try { localStorage.setItem(key(),JSON.stringify(data)); } catch(error) { data=JSON.parse(localStorage.getItem(key()) || 'null') || fresh(); alert('Zapis się nie powiódł. Sprawdź dostępne miejsce.'); throw error; } }
+const key = () => sharedScope?'litydab:shared:'+sharedScope:'litydab:'+space;
+function load() { data = JSON.parse(localStorage.getItem(key()) || 'null') || (!sharedScope&&space==='demo'?sample():fresh()); normalize(); const added=addDemoExpenses(); if(added||!localStorage.getItem(key())) save(); }
+function save() { try { localStorage.setItem(key(),JSON.stringify(data)); window.litySharing?.changed(); } catch(error) { data=JSON.parse(localStorage.getItem(key()) || 'null') || fresh(); alert('Zapis się nie powiódł. Sprawdź dostępne miejsce.'); throw error; } }
 function render() {
   $('nav').innerHTML=pages.map((p,i)=>'<button class="'+(i===page?'active':'')+'" data-page="'+i+'">'+p+'</button>').join('');
   [orders,clients,finance,settings,tasks][page]();
@@ -140,7 +147,7 @@ const select = (name,label,options,value) => '<label>'+label+'<select name="'+na
 const area = (name,label,value='') => '<label>'+label+'<textarea name="'+name+'">'+esc(value)+'</textarea></label>';
 const check = (name,label,value) => '<label class="check"><input type="checkbox" name="'+name+'" '+(value?'checked':'')+'> '+label+'</label>';
 const grid = html => '<div class="grid">'+html+'</div>';
-const group = (title,html) => '<fieldset><legend>'+title+'</legend>'+html+'</fieldset>';
+const group = (title,html) => '<fieldset><legend>'+title+'</legend>'+html+'</fieldset></fieldset>';
 const button = (action,label,value='') => '<button type="button" data-action="'+action+'" data-id="'+esc(value)+'">'+label+'</button>';
 const table = (headers,rows) => '<div class="table"><table><thead><tr>'+headers.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(cell=>'<td>'+cell+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
 const person = c => [c.first,c.last].join(' ');
@@ -157,7 +164,7 @@ function orders() {
   const draw = () => {
     const search = $('search').value.toLocaleLowerCase('pl');
     const rows = data.orders.filter(o=>(!status||o.status===status)&&[o.number,person(o.client),address(o.client),o.previousNumber].join(' ').toLocaleLowerCase('pl').includes(search)).sort((a,b)=>b.date.localeCompare(a.date));
-    $('orderRows').innerHTML=rows.length?table(['Numer','Klient i dostawa','Status','Data zamówienia','Termin','Oferta','Koszt','Dochód'],rows.map(o=>['<a href="#zamowienie-'+esc(o.id)+'" data-action="order" data-id="'+esc(o.id)+'">'+esc(o.number)+'</a>',esc(person(o.client))+'<br><small>'+esc(address(o.client))+'</small>','<span class="status status-'+statuses.indexOf(o.status)+'">'+esc(o.status)+'</span>',esc(o.date),esc(o.contractSent?deadline(o.contractSent):o.due),money(quote(o).price),money(orderCost(o.id)),money(quote(o).price-orderCost(o.id))])):'Brak zamówień dla wybranych filtrów.';
+    $('orderRows').innerHTML=rows.length?table(['Numer','Klient i dostawa','Status','Data zamówienia','Termin','Oferta','Koszt','Dochód',''],rows.map(o=>['<a href="#zamowienie-'+esc(o.id)+'" data-action="order" data-id="'+esc(o.id)+'">'+esc(o.number)+'</a>',esc(person(o.client))+'<br><small>'+esc(address(o.client))+'</small>','<span class="status status-'+statuses.indexOf(o.status)+'">'+esc(o.status)+'</span>',esc(o.date),esc(o.contractSent?deadline(o.contractSent):o.due),money(quote(o).price),money(quote(o).cost),money(quote(o).price-quote(o).cost),trashButton(o)])):'Brak zamówień dla wybranych filtrów.';
   };
   $('search').oninput=draw;
   $('statusButtons').onclick=e=>{
@@ -181,10 +188,10 @@ function bindAddress() {
 }
 function clientFields(c,collapse=false) {
   const section=collapse?fold:group;
-  return section('Dane klienta',grid(Object.entries(fields).map(([key,label])=>input(key,label,c[key],key==='email'?'email':key==='phone'?'tel':'text',key==='first'||key==='last'?'required':'')).join('')))+
-    section('Adres klienta / dostawy',grid(Object.entries(addressFields).map(([key,label])=>input(key,label,c[key])).join('')))+
+  return section('Dane klienta',grid(Object.entries(fields).filter(([key])=>!['company','nip'].includes(key)).map(([key,label])=>input(key,label,c[key],key==='email'?'email':key==='phone'?'tel':'text',key==='first'||key==='last'?'required':'')).join('')))+
+    section('Adres klienta / dostawy','<div class="address-row">'+Object.entries(addressFields).map(([key,label])=>input(key,label,c[key])).join('')+'</div>')+
     check('same','Adres faktury taki sam jak wysyłki',c.same!==false)+
-    '<fieldset class="billing"><legend>Adres faktury</legend>'+grid(Object.entries(addressFields).map(([key,label])=>input('bill_'+key,label,c['bill_'+key])).join(''))+'</fieldset>';
+    '<fieldset><legend>Adres faktury</legend>'+grid(input('company','Nazwa firmy',c.company)+input('nip','NIP',c.nip))+'<fieldset class="billing"><legend>Inny adres faktury</legend>'+grid(Object.entries(addressFields).map(([key,label])=>input('bill_'+key,label,c['bill_'+key])).join(''))+'</fieldset></fieldset>';
 }
 function clients() {
   $('main').innerHTML='<h1>Baza klientów</h1>'+button('client','Nowy klient')+table(['Imię','Nazwisko','E-mail','Telefon','Adres klienta / faktury',''],data.clients.map(c=>[esc(c.first),esc(c.last),esc(c.email),esc(c.phone),esc(address(c))+(c.same===false?'<br><small>Faktura: '+esc(billingAddress(c))+'</small>':''),button('client','Otwórz',c.id)]));
@@ -195,12 +202,28 @@ function clientForm(clientId) {
   bindAddress();
   $('editor').onsubmit=e=>{e.preventDefault();put(data.clients,{...values(e.target),same:e.target.elements.same.checked,id:c.id||id()});save();clients();};
 }
+function trashButton(order) {
+  return '<button type="button" data-action="deleteOrder" data-id="'+esc(order.id)+'" aria-label="Usuń zamówienie '+esc(order.number)+'" title="Usuń zamówienie">🗑</button>';
+}
+function deleteOrder(orderId) {
+  const order=data.orders.find(item=>item.id===orderId);
+  if(!order||!confirm('Usunąć zamówienie '+order.number+'? Trafi do lokalnego archiwum usuniętych zamówień.')) return;
+  (data.deletedOrders??=[]).push({...order,deletedAt:new Date().toISOString()});
+  data.orders=data.orders.filter(item=>item.id!==orderId);
+  save();orders();
+}
+function orderActions(order) {
+  return '<div class="order-actions"><button type="submit">Zapisz zamówienie</button> '+
+    '<button type="submit" name="generate" value="contract">Zapisz i wygeneruj umowę PDF</button> '+
+    (order.id?button('offer','Oferta / PDF',order.id)+' '+button('email','Przygotuj e-mail',order.id)+' '+button('deleteOrder','Usuń zamówienie',order.id)+' ':'')+
+    button('closeOrder','Zamknij')+'</div>';
+}
 function orderForm(orderId) {
   const o=data.orders.find(x=>x.id===orderId)||{date:today(),due:'',length:120,width:60,rates:{...data.rates},steps:[]};
   const c=o.client||{};
   const customCosts=[...(o.additionalCosts||[])];
   const dimensions=o.length+' x '+o.width;
-  $('main').innerHTML='<h1>'+esc(o.number||'Nowe zamówienie')+'</h1><form id="editor">'+
+  $('main').innerHTML='<h1>'+esc(o.number||'Nowe zamówienie')+'</h1><form id="editor">'+orderActions(o)+
     '<section aria-label="Podsumowanie zamówienia">Przychód <strong id="orderRevenue"></strong> · Koszt <strong id="orderTotalCost"></strong> · Dochód <strong id="orderProfit"></strong></section>'+grid(input('date','Data zamówienia',o.date,'date','required')+input('contractSent','Data wysłania umowy',o.contractSent,'date')+input('due','Termin realizacji',o.due,'date','readonly')+select('status','Status',statuses,o.status))+
     fold('Klient i adresy','<label>Wybierz klienta<select id="customer"><option value="">Nowy klient</option>'+data.clients.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===o.clientId?'selected':'')+'>'+esc(person(x))+'</option>').join('')+'</select></label><div id="customerFields">'+clientFields(c,true)+'</div>',true)+
     fold('Parametry blatu',select('size','Wymiary blatu (cm)',[...sizes,'Custom'],sizes.includes(dimensions)?dimensions:'Custom')+
@@ -213,6 +236,7 @@ function orderForm(orderId) {
       ].map(([key,label])=>input(key,label,o[key],'number','min="0" step="0.01"')).join('')+
         num('extraCost','Dodatkowy koszt (zł)',o.extraCost)+input('extraCostDescription','Opis dodatkowego kosztu',o.extraCostDescription??(Number(o.extraCost)?o.extraLabel:'')))+
       '<p class="muted">Wyczyść pole blatu, stelaża, kosza lub wysyłki, aby wrócić do wartości domyślnej.</p>'+
+      '<label>Podwykonawca<select id="orderContractor"><option value="">Wybierz podwykonawcę</option>'+data.contractors.map((c,i)=>'<option value="'+i+'">'+esc(c.name)+' · '+esc(c.target)+' · '+money(c.rate)+' / '+esc(c.method)+'</option>').join('')+'</select></label>'+
       '<div id="orderCosts"></div><label>Dodaj koszt z cennika<select id="chooseCost"><option value="">Wybierz koszt</option>'+
       (data.rates.customCosts||[]).map((c,i)=>'<option value="'+i+'">'+esc(c.label)+' · '+money(c.amount)+'</option>').join('')+'</select></label>')+
       check('invoice','Wymagana faktura',o.invoice))+
@@ -220,9 +244,9 @@ function orderForm(orderId) {
       select('contractPayment','Płatność w dniu odbioru dzieła',contractPayment,o.contractPayment||(o.payment==='Gotówka'?contractPayment[1]:contractPayment[0]))+
       input('bankAccount','Numer konta',o.bankAccount??(space==='firma'?'59 1750 0012 0000 0000 2741 2987':''))+num('deposit','Zaliczka w umowie (zł)',o.deposit))+'</div>')+
     group('Realizacja',stages.map((name,i)=>grid(input('plan'+i,'Planowany termin','','date','readonly')+select('step'+i,name,stepStates,o.steps[i]?.state)+input('stepDate'+i,'Data wykonania',o.steps[i]?.date,'date')+input('stepNote'+i,'Notatka',o.steps[i]?.note))).join(''))+
-    group('Przesyłka',(o.id?button('pkShipment','Przygotuj zlecenie Polkurier',o.id):'<p>Zapisz zamówienie, aby przygotować przesyłkę.</p>')+grid(input('carrierOrder','Numer zlecenia Polkurier',o.carrierOrder)+input('tracking','Numer listu przewozowego',o.tracking)+input('trackUrl','Adres śledzenia',o.trackUrl,'url')+input('shippingStatus','Status przesyłki',o.shippingStatus))+( /^https?:\/\//i.test(o.trackUrl||'')?'<p><a href="'+esc(o.trackUrl)+'" target="_blank" rel="noopener">Śledź przesyłkę</a></p>':''))+
+    group('Przesyłka',(o.id?button('pkCsv','Eksport do formularza Polkurier',o.id)+' '+button('pkShipment','Przygotuj zlecenie Polkurier',o.id)+' <a href="https://www.polkurier.pl" target="_blank" rel="noopener">Otwórz Polkurier</a>':'<p>Zapisz zamówienie, aby przygotować przesyłkę.</p>')+grid(input('carrierOrder','Numer zlecenia Polkurier',o.carrierOrder)+input('tracking','Numer listu przewozowego',o.tracking)+input('trackUrl','Adres śledzenia',o.trackUrl,'url')+input('shippingStatus','Status przesyłki',o.shippingStatus))+( /^https?:\/\//i.test(o.trackUrl||'')?'<p><a href="'+esc(o.trackUrl)+'" target="_blank" rel="noopener">Śledź przesyłkę</a></p>':''))+
     (orderId?'<section><label>Dodaj pliki do folderu zamówienia <input type="file" id="orderFiles" multiple></label></section>':'')+
-    '<button>Zapisz zamówienie</button> <button name="generate" value="contract">Zapisz i wygeneruj umowę PDF</button> '+(orderId?button('offer','Oferta / PDF',o.id)+' '+button('email','Przygotuj e-mail',o.id):'')+'</form>';
+    orderActions(o)+'</form>';
   $('customer').onchange=()=>{$('customerFields').innerHTML=clientFields(data.clients.find(x=>x.id===$('customer').value)||{},true);bindAddress();};
   bindAddress();
   const read = () => {
@@ -264,6 +288,15 @@ function orderForm(orderId) {
       alert('Zapisano pliki w folderze '+folder.name+'.');
     } catch(error){alert(error.message);}
     finally {control.value='';}
+  };
+  $('orderContractor').onchange=e=>{
+    if(e.target.value==='')return;
+    const contractor=data.contractors[Number(e.target.value)];
+    const amount=contractorCost(contractor,read());
+    const target={'Blat':'topCost','Stelaż':'frameCost','Kosz na kable':'basketCost','Wysyłka':'shippingCost','Dodatkowy koszt':'extraCost'}[contractor.target];
+    form.elements.namedItem(target).value=amount;
+    if(target==='extraCost')form.elements.extraCostDescription.value=contractor.name;
+    e.target.value='';syncDiscount();
   };
   const notes=form.elements.notes;
   function resizeNotes() {
@@ -341,7 +374,7 @@ function orderForm(orderId) {
     if(!$('customer').value && o.id && item.clientId===o.clientId) item.client.id=item.clientId=id();
     item.id=o.id||id();
     if(Number(item.discountAmount)>quote(item,true).price||Number(item.discountPercent)>100){alert('Zniżka nie może przekraczać wartości oferty.');return;}
-    item.number=o.date===item.date&&o.number?o.number:nextNumber(item.date,data.orders);
+    item.number=o.date===item.date&&o.number?o.number:nextNumber(item.date,[...data.orders,...(data.deletedOrders||[])]);
     if(!item.number){alert('Dla tej daty wykorzystano wszystkie numery od 01 do 99.');return;}
     if(!data.clients.some(x=>x.id===item.clientId)) data.clients.push(item.client);
     const workspace=space;
@@ -381,14 +414,41 @@ function finance() {
     const bars=Object.entries(monthly).sort().map(([m,[a,b,revenue]])=>[m,[a,b,a-b,revenue][metric]]);
     const scale=Math.max(1,...bars.map(([,n])=>Math.abs(n)));
     $('totals').innerHTML='<strong>Wpłaty '+money(income)+' · wydatki '+money(costs)+' · wynik kasowy '+money(income-costs)+'</strong><p>Przychody z zamówień według ofert '+money(orders.reduce((a,o)=>a+quote(o).price,0))+'</p>'+bars.map(([m,n])=>'<div>'+m+' · '+money(n)+'<progress aria-label="'+m+'" max="'+scale+'" value="'+Math.abs(n)+'"></progress></div>').join('');
-    $('expenseRows').innerHTML=table(['Data','Opis','Zamówienie','Kwota'],expenses.map(x=>[esc(x.date),esc(x.name),esc(data.orders.find(o=>o.id===x.order)?.number||'Ogólny'),money(x.amount)]));
+    $('expenseRows').innerHTML=table(['Data','Opis','Zamówienie','Kwota'],expenses.map(x=>[esc(x.date),esc(x.name),esc([...data.orders,...(data.deletedOrders||[])].find(o=>o.id===x.order)?.number||'Ogólny'),money(x.amount)]));
   };
   for(const field of ['from','to','metric']) $(field).onchange=draw;
   $('expense').onsubmit=e=>{e.preventDefault();data.expenses.push({...values(e.target),id:id()});save();finance();};draw();
 }
+function contractorSettings() {
+  $('main').insertAdjacentHTML('beforeend','<section><h2>Podwykonawcy</h2>'+
+    table(['Nazwa','Pozycja kosztowa','Rozliczenie','Stawka',''],data.contractors.map((c,i)=>[esc(c.name),esc(c.target),esc(c.method),money(c.rate),button('removeContractor','Usuń',i)]))+
+    '<form id="contractorForm">'+grid(input('name','Nazwa podwykonawcy','','text','required')+select('target','Pozycja kosztowa',['Blat','Stelaż','Kosz na kable','Wysyłka','Dodatkowy koszt'])+
+      select('method','Sposób wyliczenia',['Stała kwota','m²','m³'])+num('rate','Stawka (zł)'))+'<p><button>Dodaj podwykonawcę</button></p></form></section>');
+  $('contractorForm').onsubmit=e=>{e.preventDefault();data.contractors.push({...values(e.target),id:id()});save();settings();};
+}
+function sharingSettings() {
+  let config={};
+  try{config=JSON.parse(localStorage.getItem('litydab-sharing-config')||'{}');}catch{}
+  $('main').insertAdjacentHTML('beforeend','<section><h2>Współdzielenie aplikacji</h2><div id="sharingModule"><label>E-mail<input type="email" placeholder="Twój adres e-mail" disabled></label><p role="status">Moduł logowania nie został wczytany. Uruchom ponownie lokalny serwer z bieżącej paczki i odśwież stronę.</p></div>'+
+    '<details><summary>Konfiguracja Supabase — administrator</summary><p><a href="SUPABASE.md" target="_blank">Instrukcja konfiguracji</a></p><form id="shareConfig">'+grid(input('url','Project URL',config.url,'url','required')+input('publicKey','Publiczny klucz publishable / anon',config.publicKey,'text','required'))+
+    '<p><button>Zapisz konfigurację i przeładuj</button></p></form></details></section>');
+  $('shareConfig').onsubmit=e=>{
+    e.preventDefault();
+    const config=values(e.target);
+    const url=new URL(config.url);
+    if(url.protocol!=='https:'||!/^[a-z0-9-]+\.supabase\.co$/.test(url.hostname)||config.publicKey.length<20){alert('Podaj Project URL Supabase i publiczny klucz.');return;}
+    const previous=localStorage.getItem('litydab-sharing-config');
+    if(previous&&JSON.parse(previous).url!==config.url&&window.LityLocal.scope()){alert('Wróć do danych lokalnych przed zmianą projektu.');return;}
+    if(previous&&JSON.parse(previous).url!==config.url) {
+      localStorage.removeItem('litydab-sharing-session-v1');localStorage.removeItem('litydab-sharing-state-v1');
+    }
+    localStorage.setItem('litydab-sharing-config',JSON.stringify({...config,enabled:true}));location.reload();
+  };
+  window.litySharing?.render();
+}
 function settings() {
   $('main').innerHTML='<h1>Ustawienia</h1><section><h2>Wygląd i przestrzeń</h2>'+
-    grid('<label>Motyw<select id="theme">'+themes.map(value=>'<option>'+value+'</option>').join('')+'</select></label>'+select('font','Wielkość czcionki',fontSizes.map(n=>n+'%'),(localStorage.getItem('litydab:font')||100)+'%')+select('scale','Skala interfejsu',scales.map(n=>n+'%'),(localStorage.getItem('litydab:scale')||100)+'%')+'<label>Przestrzeń<select id="space"><option value="demo">Demonstracyjna</option><option value="firma">Firmowa</option></select></label>')+'</section><section><h2>Wersja aplikacji</h2><p>Lity Dąb Backoffice <strong>v0.1.12</strong></p><p><a href="CHANGELOG.md" target="_blank" rel="noopener">Historia wydań</a></p></section><section><h2>Cennik</h2><form id="rates">'+grid(Object.entries({...rateLabels,basketCost:'Kosz na kable'}).map(([k,l])=>num(k,l,data.rates[k],k==='thickness'?0.01:0)).join(''))+'<p><button>Zapisz stawki domyślne</button></p></form>'+
+    grid('<label>Motyw<select id="theme">'+themes.map(value=>'<option>'+value+'</option>').join('')+'</select></label>'+select('font','Wielkość czcionki',fontSizes.map(n=>n+'%'),(localStorage.getItem('litydab:font')||100)+'%')+select('scale','Skala interfejsu',scales.map(n=>n+'%'),(localStorage.getItem('litydab:scale')||100)+'%')+'<label>Przestrzeń<select id="space"><option value="demo">Demonstracyjna</option><option value="firma">Firmowa</option></select></label>')+'</section><section><h2>Wersja aplikacji</h2><p>Lity Dąb Backoffice <strong>v0.1.21</strong></p><p><a href="CHANGELOG.md" target="_blank" rel="noopener">Historia wydań</a></p></section><section><h2>Cennik</h2><form id="rates">'+grid(Object.entries({...rateLabels,basketCost:'Kosz na kable'}).map(([k,l])=>num(k,l,data.rates[k],k==='thickness'?0.01:0)).join(''))+'<p><button>Zapisz stawki domyślne</button></p></form>'+
     '<h3>Dodatkowe koszty</h3>'+table(['Nazwa','Koszt (zł)',''],(data.rates.customCosts||[]).map((c,i)=>[esc(c.label),money(c.amount),button('removeCost','Usuń',i)]))+
     '<form id="catalog">'+grid(input('label','Nazwa kosztu','','text','required')+num('amount','Koszt (zł)'))+'<p><button>Dodaj koszt do cennika</button></p></form></section>'+
     '<section><h2>Szablony wiadomości</h2><p class="muted">Pola: {{imię}}, {{numer}}, {{wymiary}}, {{cena}}, {{przesyłka}}</p>'+data.templates.map((t,i)=>fold(esc(t.name),'<form class="template" data-index="'+i+'">'+input('name','Nazwa',t.name,'text','required')+input('subject','Temat',t.subject)+area('body','Treść',t.body)+'<p><button>Zapisz</button> '+button('removeTemplate','Usuń',i)+'</p></form>')).join('')+button('addTemplate','Dodaj szablon')+'</section>'+
@@ -419,11 +479,13 @@ function settings() {
     };
     reader.readAsDataURL(file);
   };
+  contractorSettings();
   pkSettings();
+  sharingSettings();
   $('chooseFolder').onclick=chooseFolder;
   showFolder();
   $('space').value=space;
-  $('space').onchange=e=>{space=e.target.value;localStorage.setItem('litydab:space',space);load();render();};
+  $('space').onchange=e=>{if(sharedScope){alert('Najpierw wybierz Wróć do danych lokalnych w sekcji współdzielenia.');e.target.value=space;return;}space=e.target.value;localStorage.setItem('litydab:space',space);load();render();};
   for(const name of ['font','scale']) {
     $('main').querySelector('select[name="'+name+'"]').onchange=e=>setDisplay(name,parseInt(e.target.value,10));
   }
@@ -455,7 +517,7 @@ async function restore(input,format) {
   finally { input.value=''; }
 }
 function csvBackup() {
-  const rows=[['typ','dane_json'],['meta',{space,schema:data.schema,polkurierSender:data.polkurierSender,contractTemplate:data.contractTemplate}],['rates',data.rates]];
+  const rows=[['typ','dane_json'],['meta',{space,schema:data.schema,polkurierSender:data.polkurierSender,polkurierSenders:data.polkurierSenders,defaultSenderId:data.defaultSenderId,contractors:data.contractors,deletedOrders:data.deletedOrders,contractTemplate:data.contractTemplate}],['rates',data.rates]];
   for(const kind of ['clients','orders','expenses','templates','tasks']) {
     for(const item of data[kind]) rows.push([kind,item]);
   }
@@ -485,6 +547,10 @@ function readCsvBackup(content) {
     else throw Error('Nieprawidłowy rekord kopii CSV.');
   }
   restored.schema=meta?.schema;
+  if(meta?.defaultSenderId)restored.defaultSenderId=meta.defaultSenderId;
+  restored.contractors=meta?.contractors||[];
+  restored.polkurierSenders=meta?.polkurierSenders||[];
+  if(Array.isArray(meta?.deletedOrders))restored.deletedOrders=meta.deletedOrders;
   if(meta?.polkurierSender)restored.polkurierSender=meta.polkurierSender;
   if(typeof meta?.contractTemplate==='string') restored.contractTemplate=meta.contractTemplate;
   return {space:meta?.space,data:restored};
@@ -494,7 +560,7 @@ function validBackup(x) {
   const numeric=v=>(typeof v==='number'||string(v)&&v.trim()!=='')&&Number.isFinite(Number(v))&&Number(v)>=0;
   const client=c=>c&&string(c.id)&&string(c.first)&&string(c.last);
   const rates=r=>r&&Object.keys(rateLabels).every(k=>numeric(r[k]));
-  return (x?.tasks===undefined||Array.isArray(x.tasks)&&x.tasks.every(t=>t&&string(t.id)&&string(t.title)&&string(t.due)&&typeof t.done==='boolean'))&&x?.schema===1&&rates(x.rates)&&Array.isArray(x.clients)&&x.clients.every(client)&&Array.isArray(x.orders)&&
+  return (x?.contractors===undefined||Array.isArray(x.contractors)&&x.contractors.every(c=>c&&string(c.id)&&string(c.name)&&['Blat','Stelaż','Kosz na kable','Wysyłka','Dodatkowy koszt'].includes(c.target)&&['Stała kwota','m²','m³'].includes(c.method)&&numeric(c.rate)))&&(x?.polkurierSenders===undefined||Array.isArray(x.polkurierSenders)&&x.polkurierSenders.every(c=>c&&string(c.id)&&string(c.person)))&&(x?.tasks===undefined||Array.isArray(x.tasks)&&x.tasks.every(t=>t&&string(t.id)&&string(t.title)&&string(t.due)&&typeof t.done==='boolean'))&&x?.schema===1&&rates(x.rates)&&Array.isArray(x.clients)&&x.clients.every(client)&&Array.isArray(x.orders)&&
     x.orders.every(o=>o&&string(o.id)&&string(o.number)&&string(o.date)&&client(o.client)&&rates(o.rates)&&numeric(o.length)&&numeric(o.width)&&Array.isArray(o.steps))&&
     Array.isArray(x.expenses)&&x.expenses.every(e=>e&&string(e.date)&&numeric(e.amount))&&Array.isArray(x.templates)&&x.templates.every(t=>t&&string(t.name)&&string(t.subject)&&string(t.body));
 }
@@ -502,7 +568,7 @@ function orderReport() {
   const headers=['Numer zamówienia','Data zamówienia','Status','Termin','Klient','Adres dostawy','E-mail','Telefon','Faktura','Długość (cm)','Szerokość (cm)','Kolor blatu','Stelaż','Uwagi','Oferta (PLN)','Koszt (PLN)','Dochód (PLN)','Wpłacono (PLN)','Numer przesyłki'];
   const decimal=value=>Number(value).toFixed(2).replace('.',',');
   const rows=data.orders.map(o=>{
-    const cost=orderCost(o.id), price=quote(o).price;
+    const cost=quote(o).cost, price=quote(o).price;
     return [o.number,o.date,o.status,o.contractSent?deadline(o.contractSent):o.due,person(o.client),address(o.client),o.client.email,o.client.phone,o.invoice?'Tak':'Nie',o.length,o.width,o.color==='Inny'?o.customColor:o.color,o.frame,o.notes,decimal(price),decimal(cost),decimal(price-cost),decimal(o.paid||0),o.tracking];
   });
   const csvCell=value=>{
@@ -536,7 +602,7 @@ function email(o) {
 function offer(o) {
   $('main').innerHTML='<p>'+button('order','Wróć do zamówienia',o.id)+'</p><section id="print"><h1>Oferta '+esc(o.number)+'</h1><p>'+esc(person(o.client))+'<br>'+esc(address(o.client))+'</p><p>Biurko dębowe '+esc(o.length)+' × '+esc(o.width)+' cm</p><p>Wykończenie '+esc(o.color==='Inny'?o.customColor:o.color)+'<br>Podcięcie '+esc(o.cut)+'<br>Przelotka '+(o.grommet?'tak':'nie')+'</p><p>Stelaż '+esc(o.frameColor)+', '+esc(o.frame)+', silniki '+esc(o.motors)+'</p><p>'+esc(o.notes)+'</p><p>Łącznie <strong>'+money(quote(o).price)+'</strong><br>Płatność '+esc(o.payment)+'</p><button onclick="window.print()">Drukuj / zapisz PDF</button></section>';
 }
-const actions={pkShipment:shipmentForm,pkRefresh:key=>refreshShipment(key),pkLabel:key=>refreshShipment(key,true),resetContract:()=>{if(confirm('Przywrócić oryginalny wzór umowy?')){delete data.contractTemplate;save();settings();}},resetLogo:()=>{localStorage.removeItem('litydab:logo');applyLogo();settings();},removeCost:index=>{data.rates.customCosts.splice(Number(index),1);save();settings();},report:orderReport,removeTask:key=>{if(confirm('Usunąć zadanie?')){data.tasks=data.tasks.filter(t=>t.id!==key);save();tasks();}},order:orderForm,client:clientForm,backup,offer:key=>offer(data.orders.find(o=>o.id===key)),email:key=>email(data.orders.find(o=>o.id===key)),addTemplate:()=>{data.templates.push({name:'Nowy szablon',subject:'',body:''});save();settings();},removeTemplate:key=>{data.templates.splice(Number(key),1);save();settings();},contract:key=>contract(data.orders.find(o=>o.id===key))};
+const actions={removeContractor:index=>{data.contractors.splice(Number(index),1);save();settings();},pkCsv:exportPolkurierOrder,deleteOrder,closeOrder:orders,pkShipment:shipmentForm,pkRefresh:key=>refreshShipment(key),pkLabel:key=>refreshShipment(key,true),resetContract:()=>{if(confirm('Przywrócić oryginalny wzór umowy?')){delete data.contractTemplate;save();settings();}},resetLogo:()=>{localStorage.removeItem('litydab:logo');applyLogo();settings();},removeCost:index=>{data.rates.customCosts.splice(Number(index),1);save();settings();},report:orderReport,removeTask:key=>{if(confirm('Usunąć zadanie?')){data.tasks=data.tasks.filter(t=>t.id!==key);save();tasks();}},order:orderForm,client:clientForm,backup,offer:key=>offer(data.orders.find(o=>o.id===key)),email:key=>email(data.orders.find(o=>o.id===key)),addTemplate:()=>{data.templates.push({name:'Nowy szablon',subject:'',body:''});save();settings();},removeTemplate:key=>{data.templates.splice(Number(key),1);save();settings();},contract:key=>contract(data.orders.find(o=>o.id===key))};
 document.addEventListener('click',e=>{
   const el=e.target.closest('button,a[data-action]');
   if(!el)return;
@@ -696,3 +762,23 @@ async function saveContractPdf(order,folder,section,workspace) {
   }
 }
 applyLogo();
+
+window.LityLocal=Object.freeze({
+  get:()=>JSON.parse(JSON.stringify(data)),
+  validate:value=>{
+    if(!validBackup(value))throw Error('Dane wspólnej bazy mają nieprawidłowy format.');
+    return value;
+  },
+  scope:()=>sharedScope,
+  apply:value=>{data=value;normalize();localStorage.setItem(key(),JSON.stringify(data));render();},
+  switchScope:(scope,initial)=>{
+    sharedScope=scope;
+    if(scope){
+      space='firma';
+      const existing=localStorage.getItem(key());
+      data=existing?JSON.parse(existing):initial||fresh();
+      normalize();localStorage.setItem(key(),JSON.stringify(data));
+    } else {space=localStorage.getItem('litydab:space')==='firma'?'firma':'demo';load();}
+    render();
+  }
+});

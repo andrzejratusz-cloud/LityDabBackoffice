@@ -54,3 +54,12 @@ header nav{padding:0;border:0}#primary button{font-weight:600}#statusButtons{mar
 
 .contract h1{text-align:center}
 @media screen{.contract [contenteditable]{outline:1px dashed var(--border,#bcb6a6);outline-offset:3px;white-space:pre-wrap}.contract [contenteditable]:focus{outline:2px solid var(--accent,#785027)}}
+.order-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.address-row{display:grid;grid-template-columns:100px minmax(100px,1fr) minmax(120px,1.5fr) 85px 85px;gap:10px}
+.address-row input,.grid input,.grid select,.grid textarea{min-width:0;width:100%}
+.grid>label,.address-row>label{display:flex;flex-direction:column;gap:5px;min-width:0;align-items:stretch}
+@media screen{
+fieldset fieldset,fieldset details,.form-section .form-section,section fieldset,section details,fieldset>fieldset,.billing{background:var(--stripe,#f5f1e7)}
+.form-section>fieldset{background:var(--stripe,#f5f1e7)}
+}
+@media(max-width:700px){.address-row{grid-template-columns:repeat(2,minmax(0,1fr))}}

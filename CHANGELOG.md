@@ -1,5 +1,24 @@
 # Historia wydań Lity Dąb Backoffice
 
+## v0.1.19
+
+- Dane firmy w adresie faktury, zwarty adres klienta i kolory podsekcji.
+- Podwykonawcy z rozliczeniem kwotowym, za m² lub m³.
+- Lista nadawców i synchronizacja wspólnego backoffice przez Supabase.
+
+## v0.1.17
+
+- Osobne pola wymiarów i wagi paczek blatu i stelaża.
+
+## v0.1.14
+
+- Widoczne komunikaty walidacji i postępu wyceny Polkurier oraz poprawione sprawdzanie rachunku pobrania.
+
+## v0.1.13
+
+- Koszt i dochód listy zgodne z formularzem zamówienia.
+- Usuwanie zamówień i przyciski na górze oraz dole formularza.
+
 ## v0.1.12
 
 - Przygotowanie przesyłek Polkurier, wycena, nadawanie, numery listów i etykiety PDF.
@@ -65,6 +84,7 @@
 
 - Pierwsza wersja PWA z dziesięcioma zamówieniami demonstracyjnymi.
 - Klienci, wyceny, realizacja, wydatki, szablony wiadomości i umowy PDF.
+
 
 
 

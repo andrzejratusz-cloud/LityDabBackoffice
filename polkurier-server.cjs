@@ -11,7 +11,7 @@ let journal=fs.existsSync(journalPath)?JSON.parse(fs.readFileSync(journalPath,'u
 const active=new Set();
 const session=crypto.randomBytes(32).toString('hex');
 function persist(){const temp=journalPath+'.tmp';fs.writeFileSync(temp,JSON.stringify(journal));fs.renameSync(temp,journalPath);}
-const files=new Map(['index.html','app.js','files.js','polkurier.js','style.css','manifest.json','sw.js','icon.svg','logo.png','CHANGELOG.md','POLKURIER.md'].map(name=>['/'+name,name]));
+const files=new Map(['index.html','app.js','files.js','polkurier.js','style.css','manifest.json','sw.js','icon.svg','logo.png','CHANGELOG.md','POLKURIER.md','sharing.js','sharing-config.js','SUPABASE.md','supabase-schema.sql'].map(name=>['/'+name,name]));
 const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.svg':'image/svg+xml'};
 const server=http.createServer(async(req,res)=>{
   const origin='http://127.0.0.1:8791';
