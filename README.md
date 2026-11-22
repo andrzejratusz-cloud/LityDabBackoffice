@@ -24,3 +24,14 @@ Koszt zamówienia to suma wydatków przypisanych do niego w finansach. Dochód t
 
 
 
+## Zmiany w v0.1.22
+
+Lista zamówień ma edytowalne statusy i podsumowanie zgodne z filtrem. Koszt szacowany pochodzi z formularza. Rzeczywiste wydatki pokazane są osobno. W Koszty i przychody przycisk Dodaj wydatek rzeczywisty otwiera formularz z datą, opisem, kwotą, numerem faktury i sprzedawcą. Wydatek można podzielić kwotowo lub równo na zaznaczone zamówienia. Pozostała część jest kosztem ogólnym. Podział zachowuje sumę co do grosza. Dostępna jest edycja wcześniejszych wydatków.
+
+Historia zmian pojawia się w ustawieniach od tej wersji. Zawiera czas, lokalnego użytkownika albo zalogowany e-mail, rodzaj danych i wartości przed/po. Kopie bazy JSON i CSV obejmują historię. Sama historia ma eksport JSON i CSV do Excela oraz import JSON.
+
+Folder faktur wybiera się w ustawieniach. Wybierz folder z dysku Google Drive synchronizowanego przez aplikację Google Drive na komputerze. W przeglądarce udziel dostępu do folderu. Załączniki PDF/JPG/PNG/WebP do 25 MB zapisują się lokalnie w IndexedDB oraz w wybranym folderze. Opisy faktur są w bazie i jej kopiach. Pliki binarne zachowaj także w Google Drive, ponieważ nie są zawarte w kopiach JSON/CSV ani w synchronizacji Supabase. Na iOS pobrany plik można zapisać do Google Drive przez systemowy wybór miejsca.
+
+Na iOS Safari i aplikacja z ikony mają oddzielny zapis. W Ustawienia / Skrót na pulpit i przeniesienie danych przycisk Dodaj skrót na pulpit pobiera kopię przed instalacją. Na iPhonie kończysz instalację przez Udostępnij / Dodaj do ekranu głównego. Przy pierwszym uruchomieniu z ikony pojawia się ekran przeniesienia danych. Wczytaj plik w tej sekcji albo otwórz wspólną bazę przez logowanie Supabase. Kopia przeniesienia obejmuje ustawienia wyglądu, publiczną konfigurację Supabase i bieżącą bazę. Dotychczasowe dane pozostają w Safari. Instalacja i synchronizacja na fizycznym iPhonie wymagają testu użytkownika.
+
+Usunięcie klienta zachowuje dane klienta w historycznych zamówieniach. Usunięte dane są także w lokalnej kopii archiwalnej.

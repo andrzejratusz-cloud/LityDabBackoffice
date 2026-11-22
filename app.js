@@ -60,6 +60,7 @@ function addDemoExpenses() {
 }
 function normalize() {
   data.tasks ??= [];
+  data.audit ??= [];
   data.contractors ??= [];
   for(const o of data.orders) {
     if(!/^\d{10}$/.test(o.number)) {
@@ -127,7 +128,9 @@ const pages = ['Zamówienia','Baza klientów','Koszty i przychody','Ustawienia',
 const themes=['Jasny','Dębowy','Leśny','Ciemny','Niebiesko-biały'];
 const sizes=['120 x 60','125 x 60','130 x 65','140 x 70','160 x 80'];
 let sharedScope=null;
-let space=localStorage.getItem('litydab:space')==='firma'?'firma':'demo', page=0, data;
+const emptyStandalone=standaloneApp()&&!localStorage.getItem('litydab:space')&&!localStorage.getItem('litydab:firma')&&!localStorage.getItem('litydab:demo');
+let space=localStorage.getItem('litydab:space')==='firma'||emptyStandalone?'firma':'demo', page=emptyStandalone?3:0, data;
+if(emptyStandalone)localStorage.setItem('litydab:space','firma');
 let theme=localStorage.getItem('litydab:theme')||'Jasny';
 document.documentElement.dataset.theme=theme;
 for(const [name,options] of [['font',fontSizes],['scale',scales]]) {
@@ -136,10 +139,25 @@ for(const [name,options] of [['font',fontSizes],['scale',scales]]) {
 }
 const key = () => sharedScope?'litydab:shared:'+sharedScope:'litydab:'+space;
 function load() { data = JSON.parse(localStorage.getItem(key()) || 'null') || (!sharedScope&&space==='demo'?sample():fresh()); normalize(); const added=addDemoExpenses(); if(added||!localStorage.getItem(key())) save(); }
-function save() { try { localStorage.setItem(key(),JSON.stringify(data)); window.litySharing?.changed(); } catch(error) { data=JSON.parse(localStorage.getItem(key()) || 'null') || fresh(); alert('Zapis się nie powiódł. Sprawdź dostępne miejsce.'); throw error; } }
+function save() {
+  const storageKey=key();
+  const previous=JSON.parse(localStorage.getItem(storageKey)||'null');
+  try {
+    if(previous)logChanges(previous,data);
+    localStorage.setItem(storageKey,JSON.stringify(data));
+    window.litySharing?.changed();
+  } catch(error) {
+    data=previous||fresh();normalize();
+    alert('Zapis nie powiódł się. Sprawdź dostępne miejsce.');
+    throw error;
+  }
+}
 function render() {
   $('nav').innerHTML=pages.map((p,i)=>'<button class="'+(i===page?'active':'')+'" data-page="'+i+'">'+p+'</button>').join('');
   [orders,clients,finance,settings,tasks][page]();
+  if(emptyStandalone&&!localStorage.getItem('litydab:install-transfer-complete')){
+    $('main').insertAdjacentHTML('afterbegin','<section role="status"><h2>Przenieś dane z Safari</h2><p>Otworzyłeś osobny magazyn aplikacji z ikony. W Safari pobierz plik w Ustawienia → Skrót na pulpit i przeniesienie danych, a tutaj go wczytaj. Dla wspólnej bazy zaloguj się do Supabase.</p></section>');
+  }
 }
 const input = (name,label,value='',type='text',attrs='') => '<label>'+label+'<input name="'+name+'" value="'+esc(value)+'" type="'+type+'" '+attrs+'></label>';
 const num = (name,label,value=0,min=0) => input(name,label,value,'number','required min="'+min+'" step="0.01"');
@@ -147,7 +165,7 @@ const select = (name,label,options,value) => '<label>'+label+'<select name="'+na
 const area = (name,label,value='') => '<label>'+label+'<textarea name="'+name+'">'+esc(value)+'</textarea></label>';
 const check = (name,label,value) => '<label class="check"><input type="checkbox" name="'+name+'" '+(value?'checked':'')+'> '+label+'</label>';
 const grid = html => '<div class="grid">'+html+'</div>';
-const group = (title,html) => '<fieldset><legend>'+title+'</legend>'+html+'</fieldset></fieldset>';
+const group = (title,html) => '<fieldset><legend>'+title+'</legend>'+html+'</fieldset>';
 const button = (action,label,value='') => '<button type="button" data-action="'+action+'" data-id="'+esc(value)+'">'+label+'</button>';
 const table = (headers,rows) => '<div class="table"><table><thead><tr>'+headers.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(cell=>'<td>'+cell+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
 const person = c => [c.first,c.last].join(' ');
@@ -164,7 +182,14 @@ function orders() {
   const draw = () => {
     const search = $('search').value.toLocaleLowerCase('pl');
     const rows = data.orders.filter(o=>(!status||o.status===status)&&[o.number,person(o.client),address(o.client),o.previousNumber].join(' ').toLocaleLowerCase('pl').includes(search)).sort((a,b)=>b.date.localeCompare(a.date));
-    $('orderRows').innerHTML=rows.length?table(['Numer','Klient i dostawa','Status','Data zamówienia','Termin','Oferta','Koszt','Dochód',''],rows.map(o=>['<a href="#zamowienie-'+esc(o.id)+'" data-action="order" data-id="'+esc(o.id)+'">'+esc(o.number)+'</a>',esc(person(o.client))+'<br><small>'+esc(address(o.client))+'</small>','<span class="status status-'+statuses.indexOf(o.status)+'">'+esc(o.status)+'</span>',esc(o.date),esc(o.contractSent?deadline(o.contractSent):o.due),money(quote(o).price),money(quote(o).cost),money(quote(o).price-quote(o).cost),trashButton(o)])):'Brak zamówień dla wybranych filtrów.';
+    $('orderRows').innerHTML=rows.length?table(['Numer','Klient i dostawa','Status','Data zamówienia','Termin','Przychód','Koszt szacowany','Dochód','Wydatki rzeczywiste',''],rows.map(o=>['<a href="#zamowienie-'+esc(o.id)+'" data-action="order" data-id="'+esc(o.id)+'">'+esc(o.number)+'</a>',esc(person(o.client))+'<br><small>'+esc(address(o.client))+'</small>','<select class="status status-'+statuses.indexOf(o.status)+'" data-order-status="'+esc(o.id)+'" aria-label="Status zamówienia '+esc(o.number)+'">'+statuses.map(status=>'<option '+(status===o.status?'selected':'')+'>'+esc(status)+'</option>').join('')+'</select>',esc(o.date),esc(o.contractSent?deadline(o.contractSent):o.due),money(quote(o).price),money(quote(o).cost),money(quote(o).price-quote(o).cost),money(actualOrderCost(o.id)),trashButton(o)])):'Brak zamówień dla wybranych filtrów.';
+    const totals=rows.reduce((sum,order)=>{const q=quote(order);return {revenue:sum.revenue+Math.round(q.price*100),cost:sum.cost+Math.round(q.cost*100),actual:sum.actual+Math.round(actualOrderCost(order.id)*100)};},{revenue:0,cost:0,actual:0});
+    $('orderRows').insertAdjacentHTML('beforeend','<div class="order-totals">Podsumowanie widocznych zamówień · Przychód <strong>'+money(totals.revenue/100)+'</strong> · Koszt szacowany <strong>'+money(totals.cost/100)+'</strong> · Dochód <strong>'+money((totals.revenue-totals.cost)/100)+'</strong> · Wydatki rzeczywiste <strong>'+money(totals.actual/100)+'</strong></div>');
+    $('orderRows').querySelectorAll('[data-order-status]').forEach(control=>control.onchange=()=>{
+      const order=data.orders.find(item=>item.id===control.dataset.orderStatus);
+      if(!order)return;
+      order.status=control.value;save();draw();
+    });
   };
   $('search').oninput=draw;
   $('statusButtons').onclick=e=>{
@@ -194,11 +219,11 @@ function clientFields(c,collapse=false) {
     '<fieldset><legend>Adres faktury</legend>'+grid(input('company','Nazwa firmy',c.company)+input('nip','NIP',c.nip))+'<fieldset class="billing"><legend>Inny adres faktury</legend>'+grid(Object.entries(addressFields).map(([key,label])=>input('bill_'+key,label,c['bill_'+key])).join(''))+'</fieldset></fieldset>';
 }
 function clients() {
-  $('main').innerHTML='<h1>Baza klientów</h1>'+button('client','Nowy klient')+table(['Imię','Nazwisko','E-mail','Telefon','Adres klienta / faktury',''],data.clients.map(c=>[esc(c.first),esc(c.last),esc(c.email),esc(c.phone),esc(address(c))+(c.same===false?'<br><small>Faktura: '+esc(billingAddress(c))+'</small>':''),button('client','Otwórz',c.id)]));
+  $('main').innerHTML='<h1>Baza klientów</h1>'+button('client','Nowy klient')+table(['Imię','Nazwisko','E-mail','Telefon','Adres klienta / faktury',''],data.clients.map(c=>[esc(c.first),esc(c.last),esc(c.email),esc(c.phone),esc(address(c))+(c.same===false?'<br><small>Faktura: '+esc(billingAddress(c))+'</small>':''),button('client','Otwórz',c.id)+' '+button('deleteClient','Usuń klienta',c.id)]));
 }
 function clientForm(clientId) {
   const c=data.clients.find(x=>x.id===clientId)||{};
-  $('main').innerHTML='<h1>'+esc(clientId?person(c):'Nowy klient')+'</h1><form id="editor">'+clientFields(c)+'<button>Zapisz klienta</button></form>';
+  $('main').innerHTML='<h1>'+esc(clientId?person(c):'Nowy klient')+'</h1><form id="editor">'+clientFields(c)+'<button>Zapisz klienta</button> '+(c.id?button('deleteClient','Usuń klienta',c.id):'')+'</form>';
   bindAddress();
   $('editor').onsubmit=e=>{e.preventDefault();put(data.clients,{...values(e.target),same:e.target.elements.same.checked,id:c.id||id()});save();clients();};
 }
@@ -224,7 +249,7 @@ function orderForm(orderId) {
   const customCosts=[...(o.additionalCosts||[])];
   const dimensions=o.length+' x '+o.width;
   $('main').innerHTML='<h1>'+esc(o.number||'Nowe zamówienie')+'</h1><form id="editor">'+orderActions(o)+
-    '<section aria-label="Podsumowanie zamówienia">Przychód <strong id="orderRevenue"></strong> · Koszt <strong id="orderTotalCost"></strong> · Dochód <strong id="orderProfit"></strong></section>'+grid(input('date','Data zamówienia',o.date,'date','required')+input('contractSent','Data wysłania umowy',o.contractSent,'date')+input('due','Termin realizacji',o.due,'date','readonly')+select('status','Status',statuses,o.status))+
+    '<section aria-label="Podsumowanie zamówienia">Przychód <strong id="orderRevenue"></strong> · Koszt <strong id="orderTotalCost"></strong> · Dochód <strong id="orderProfit"></strong><p>Wydatki rzeczywiste przypisane do zamówienia <strong id="actualOrderCost"></strong></p></section>'+grid(input('date','Data zamówienia',o.date,'date','required')+input('contractSent','Data wysłania umowy',o.contractSent,'date')+input('due','Termin realizacji',o.due,'date','readonly')+select('status','Status',statuses,o.status))+
     fold('Klient i adresy','<label>Wybierz klienta<select id="customer"><option value="">Nowy klient</option>'+data.clients.map(x=>'<option value="'+esc(x.id)+'" '+(x.id===o.clientId?'selected':'')+'>'+esc(person(x))+'</option>').join('')+'</select></label><div id="customerFields">'+clientFields(c,true)+'</div>',true)+
     fold('Parametry blatu',select('size','Wymiary blatu (cm)',[...sizes,'Custom'],sizes.includes(dimensions)?dimensions:'Custom')+
     '<div id="customSize">'+grid(num('length','Długość (cm)',o.length,0.01)+num('width','Szerokość (cm)',o.width,0.01))+'</div>'+grid(select('color','Kolor',colors,o.color)+input('customColor','Własny kolor',o.customColor)+select('cut','Podcięcie',['Brak','Zwykłe','Ostre'],o.cut)+select('grommet','Przelotka na kable',['Nie','Tak'],o.grommet?'Tak':'Nie'))+grid(input('edge','Krawędź przednia',o.edge)+input('basket','Kosz na kable (typ / kolor)',o.basket))+area('notes','Dodatkowe ustalenia',o.notes).replace('<textarea','<textarea rows="1" class="order-notes"'))+
@@ -267,6 +292,7 @@ function orderForm(orderId) {
     $('orderRevenue').textContent=money(price);
     $('orderTotalCost').textContent=money(cost);
     $('orderProfit').textContent=money(profit);
+    if($('actualOrderCost'))$('actualOrderCost').textContent=money(o.id?actualOrderCost(o.id):0);
     $('quote').textContent='Oferta '+money(price)+' · koszt szacowany '+money(cost)+' · marża '+money(profit)+' · do zapłaty '+money(Math.max(0,price-Number(item.paid)));
   };
   const form=$('editor');
@@ -371,12 +397,12 @@ function orderForm(orderId) {
     if(Number(item.deposit)>quote(item).price) {alert('Zaliczka przekracza cenę zamówienia.');return;}
     if(Number(item.paid)>0 && !item.paidDate) {alert('Podaj datę wpłaty.');return;}
     if(!$('customer').value && !o.id) item.client.id=item.clientId=id();
-    if(!$('customer').value && o.id && item.clientId===o.clientId) item.client.id=item.clientId=id();
+    if(!$('customer').value && o.id && item.clientId===o.clientId&&!(data.deletedClients||[]).some(c=>c.id===o.clientId)) item.client.id=item.clientId=id();
     item.id=o.id||id();
     if(Number(item.discountAmount)>quote(item,true).price||Number(item.discountPercent)>100){alert('Zniżka nie może przekraczać wartości oferty.');return;}
     item.number=o.date===item.date&&o.number?o.number:nextNumber(item.date,[...data.orders,...(data.deletedOrders||[])]);
     if(!item.number){alert('Dla tej daty wykorzystano wszystkie numery od 01 do 99.');return;}
-    if(!data.clients.some(x=>x.id===item.clientId)) data.clients.push(item.client);
+    if(!data.clients.some(x=>x.id===item.clientId)&&!(data.deletedClients||[]).some(c=>c.id===item.clientId)) data.clients.push(item.client);
     const workspace=space;
     item.folderName ||= orderFolderName(item);
     put(data.orders,item);save();
@@ -399,32 +425,44 @@ function tasks() {
   $('main').querySelectorAll('[data-task]').forEach(box=>box.onchange=()=>{data.tasks.find(t=>t.id===box.dataset.task).done=box.checked;save();tasks();});
 }
 function finance() {
-  $('main').innerHTML='<h1>Koszty i przychody</h1>'+grid('<label>Od <input id="from" type="date"></label><label>Do <input id="to" type="date"></label><label>Wykres <select id="metric"><option value="0">Wpłaty</option><option value="1">Wydatki</option><option value="2">Wynik kasowy</option><option value="3">Przychody z zamówień</option></select></label>')+'<section id="totals"></section><section><h2>Wydatki</h2><form id="expense">'+grid(input('date','Data',today(),'date','required')+input('name','Opis lub kategoria','','text','required')+num('amount','Kwota',0,0.01)+'<label>Powiązanie<select name="order"><option value="">Wydatek ogólny</option>'+data.orders.map(o=>'<option value="'+esc(o.id)+'">'+esc(o.number)+'</option>').join('')+'</select></label>')+'<p><button>Dodaj wydatek</button></p></form><div id="expenseRows"></div></section>';
+  $('main').innerHTML='<h1>Koszty i przychody</h1>'+button('expense','Dodaj wydatek rzeczywisty')+
+    grid('<label>Od <input id="from" type="date"></label><label>Do <input id="to" type="date"></label><label>Wykres <select id="metric"><option value="0">Wpłaty</option><option value="1">Wydatki rzeczywiste</option><option value="2">Wynik kasowy</option><option value="3">Przychód z zamówień</option></select></label>')+
+    '<section id="totals"></section><section><h2>Wydatki rzeczywiste</h2><div id="expenseRows"></div></section>';
   const draw=()=>{
-    const within=d=>d&&(!$('from').value||d>=$('from').value)&&(!$('to').value||d<=$('to').value);
-    const expenses=data.expenses.filter(x=>within(x.date));
-    const orders=data.orders.filter(x=>within(x.date)&&x.status!=='Anulowane');
-    const monthly={};
-    const bucket=d=>monthly[d.slice(0,7)]??=[0,0,0];
-    let income=0, costs=0;
-    for(const o of data.orders.filter(x=>within(x.paidDate))) {income+=Number(o.paid||0);bucket(o.paidDate)[0]+=Number(o.paid||0);}
-    for(const x of expenses) {costs+=Number(x.amount);bucket(x.date)[1]+=Number(x.amount);}
-    for(const o of orders) bucket(o.date)[2]+=quote(o).price;
+    const within=date=>date&&(!$('from').value||date>=$('from').value)&&(!$('to').value||date<=$('to').value);
+    const expenses=data.expenses.filter(e=>within(e.date));
+    const orders=data.orders.filter(o=>within(o.date)&&o.status!=='Anulowane');
+    const monthly={},bucket=date=>monthly[date.slice(0,7)]??=[0,0,0];
+    let income=0,cost=0;
+    for(const order of data.orders.filter(o=>within(o.paidDate))){income+=Number(order.paid||0);bucket(order.paidDate)[0]+=Number(order.paid||0);}
+    for(const expense of expenses){cost+=Number(expense.amount);bucket(expense.date)[1]+=Number(expense.amount);}
+    for(const order of orders)bucket(order.date)[2]+=quote(order).price;
     const metric=Number($('metric').value);
-    const bars=Object.entries(monthly).sort().map(([m,[a,b,revenue]])=>[m,[a,b,a-b,revenue][metric]]);
-    const scale=Math.max(1,...bars.map(([,n])=>Math.abs(n)));
-    $('totals').innerHTML='<strong>Wpłaty '+money(income)+' · wydatki '+money(costs)+' · wynik kasowy '+money(income-costs)+'</strong><p>Przychody z zamówień według ofert '+money(orders.reduce((a,o)=>a+quote(o).price,0))+'</p>'+bars.map(([m,n])=>'<div>'+m+' · '+money(n)+'<progress aria-label="'+m+'" max="'+scale+'" value="'+Math.abs(n)+'"></progress></div>').join('');
-    $('expenseRows').innerHTML=table(['Data','Opis','Zamówienie','Kwota'],expenses.map(x=>[esc(x.date),esc(x.name),esc([...data.orders,...(data.deletedOrders||[])].find(o=>o.id===x.order)?.number||'Ogólny'),money(x.amount)]));
+    const bars=Object.entries(monthly).sort().map(([month,[paid,spent,revenue]])=>[month,[paid,spent,paid-spent,revenue][metric]]);
+    const scale=Math.max(1,...bars.map(([,amount])=>Math.abs(amount)));
+    $('totals').innerHTML='<strong>Wpłaty '+money(income)+' · wydatki rzeczywiste '+money(cost)+' · wynik kasowy '+money(income-cost)+'</strong><p>Przychód z zamówień według ofert '+money(orders.reduce((sum,o)=>sum+quote(o).price,0))+'</p>'+
+      bars.map(([month,amount])=>'<div>'+month+' · '+money(amount)+'<progress aria-label="'+month+'" max="'+scale+'" value="'+Math.abs(amount)+'"></progress></div>').join('');
+    const allOrders=[...data.orders,...(data.deletedOrders||[])];
+    $('expenseRows').innerHTML=table(['Data','Opis','Faktura / sprzedawca','Podział na zamówienia','Kwota',''],expenses.map(expense=>{
+      const allocations=expense.allocations??(expense.order?[{orderId:expense.order,amount:Number(expense.amount)}]:[]);
+      const general=Number(expense.amount)-allocationSum({allocations});
+      return [esc(expense.date),esc(expense.name),esc(expense.invoiceNumber)+'<br>'+esc(expense.supplier),
+        allocations.map(a=>esc(allOrders.find(o=>o.id===a.orderId)?.number||a.orderId)+' · '+money(a.amount)).join('<br>')+(general>0?'<br>Ogólne · '+money(general):''),
+        money(expense.amount),button('expense','Edytuj / faktury',expense.id)];
+    }));
   };
-  for(const field of ['from','to','metric']) $(field).onchange=draw;
-  $('expense').onsubmit=e=>{e.preventDefault();data.expenses.push({...values(e.target),id:id()});save();finance();};draw();
+  for(const field of ['from','to','metric'])$(field).onchange=draw;
+  draw();
 }
-function contractorSettings() {
+function contractorSettings(contractorId) {
+  const current=data.contractors.find(c=>c.id===contractorId)||{};
   $('main').insertAdjacentHTML('beforeend','<section><h2>Podwykonawcy</h2>'+
-    table(['Nazwa','Pozycja kosztowa','Rozliczenie','Stawka',''],data.contractors.map((c,i)=>[esc(c.name),esc(c.target),esc(c.method),money(c.rate),button('removeContractor','Usuń',i)]))+
-    '<form id="contractorForm">'+grid(input('name','Nazwa podwykonawcy','','text','required')+select('target','Pozycja kosztowa',['Blat','Stelaż','Kosz na kable','Wysyłka','Dodatkowy koszt'])+
-      select('method','Sposób wyliczenia',['Stała kwota','m²','m³'])+num('rate','Stawka (zł)'))+'<p><button>Dodaj podwykonawcę</button></p></form></section>');
-  $('contractorForm').onsubmit=e=>{e.preventDefault();data.contractors.push({...values(e.target),id:id()});save();settings();};
+    table(['Nazwa','Pozycja kosztowa','Rozliczenie','Stawka',''],data.contractors.map((c,i)=>[esc(c.name),esc(c.target),esc(c.method),money(c.rate),button('editContractor','Edytuj',c.id)+' '+button('removeContractor','Usuń',i)]))+
+    '<form id="contractorForm">'+grid(input('name','Nazwa podwykonawcy',current.name,'text','required')+select('target','Pozycja kosztowa',['Blat','Stelaż','Kosz na kable','Wysyłka','Dodatkowy koszt'],current.target)+
+      select('method','Sposób wyliczenia',['Stała kwota','m²','m³'],current.method)+num('rate','Stawka (zł)',current.rate))+fold('Dane teleadresowe i komentarz',grid(input('contact','Osoba kontaktowa',current.contact)+input('phone','Telefon',current.phone,'tel')+input('email','E-mail',current.email,'email')+
+      input('address','Adres',current.address)+input('nip','NIP',current.nip))+area('comment','Komentarz',current.comment))+
+    '<p><button>'+esc(current.id?'Zapisz podwykonawcę':'Dodaj podwykonawcę')+'</button></p></form></section>');
+  $('contractorForm').onsubmit=e=>{e.preventDefault();put(data.contractors,{...current,...values(e.target),id:current.id||id()});save();settings();};
 }
 function sharingSettings() {
   let config={};
@@ -448,7 +486,7 @@ function sharingSettings() {
 }
 function settings() {
   $('main').innerHTML='<h1>Ustawienia</h1><section><h2>Wygląd i przestrzeń</h2>'+
-    grid('<label>Motyw<select id="theme">'+themes.map(value=>'<option>'+value+'</option>').join('')+'</select></label>'+select('font','Wielkość czcionki',fontSizes.map(n=>n+'%'),(localStorage.getItem('litydab:font')||100)+'%')+select('scale','Skala interfejsu',scales.map(n=>n+'%'),(localStorage.getItem('litydab:scale')||100)+'%')+'<label>Przestrzeń<select id="space"><option value="demo">Demonstracyjna</option><option value="firma">Firmowa</option></select></label>')+'</section><section><h2>Wersja aplikacji</h2><p>Lity Dąb Backoffice <strong>v0.1.21</strong></p><p><a href="CHANGELOG.md" target="_blank" rel="noopener">Historia wydań</a></p></section><section><h2>Cennik</h2><form id="rates">'+grid(Object.entries({...rateLabels,basketCost:'Kosz na kable'}).map(([k,l])=>num(k,l,data.rates[k],k==='thickness'?0.01:0)).join(''))+'<p><button>Zapisz stawki domyślne</button></p></form>'+
+    grid('<label>Motyw<select id="theme">'+themes.map(value=>'<option>'+value+'</option>').join('')+'</select></label>'+select('font','Wielkość czcionki',fontSizes.map(n=>n+'%'),(localStorage.getItem('litydab:font')||100)+'%')+select('scale','Skala interfejsu',scales.map(n=>n+'%'),(localStorage.getItem('litydab:scale')||100)+'%')+'<label>Przestrzeń<select id="space"><option value="demo">Demonstracyjna</option><option value="firma">Firmowa</option></select></label>')+'</section><section><h2>Wersja aplikacji</h2><p>Lity Dąb Backoffice <strong>v0.1.22</strong></p><p><a href="CHANGELOG.md" target="_blank" rel="noopener">Historia wydań</a></p></section><section><h2>Cennik</h2><form id="rates">'+grid(Object.entries({...rateLabels,basketCost:'Kosz na kable'}).map(([k,l])=>num(k,l,data.rates[k],k==='thickness'?0.01:0)).join(''))+'<p><button>Zapisz stawki domyślne</button></p></form>'+
     '<h3>Dodatkowe koszty</h3>'+table(['Nazwa','Koszt (zł)',''],(data.rates.customCosts||[]).map((c,i)=>[esc(c.label),money(c.amount),button('removeCost','Usuń',i)]))+
     '<form id="catalog">'+grid(input('label','Nazwa kosztu','','text','required')+num('amount','Koszt (zł)'))+'<p><button>Dodaj koszt do cennika</button></p></form></section>'+
     '<section><h2>Szablony wiadomości</h2><p class="muted">Pola: {{imię}}, {{numer}}, {{wymiary}}, {{cena}}, {{przesyłka}}</p>'+data.templates.map((t,i)=>fold(esc(t.name),'<form class="template" data-index="'+i+'">'+input('name','Nazwa',t.name,'text','required')+input('subject','Temat',t.subject)+area('body','Treść',t.body)+'<p><button>Zapisz</button> '+button('removeTemplate','Usuń',i)+'</p></form>')).join('')+button('addTemplate','Dodaj szablon')+'</section>'+
@@ -482,6 +520,9 @@ function settings() {
   contractorSettings();
   pkSettings();
   sharingSettings();
+  auditSettings();
+  invoiceSettings();
+  installSettings();
   $('chooseFolder').onclick=chooseFolder;
   showFolder();
   $('space').value=space;
@@ -517,7 +558,7 @@ async function restore(input,format) {
   finally { input.value=''; }
 }
 function csvBackup() {
-  const rows=[['typ','dane_json'],['meta',{space,schema:data.schema,polkurierSender:data.polkurierSender,polkurierSenders:data.polkurierSenders,defaultSenderId:data.defaultSenderId,contractors:data.contractors,deletedOrders:data.deletedOrders,contractTemplate:data.contractTemplate}],['rates',data.rates]];
+  const rows=[['typ','dane_json'],['meta',{space,schema:data.schema,polkurierSender:data.polkurierSender,polkurierSenders:data.polkurierSenders,defaultSenderId:data.defaultSenderId,audit:data.audit,deletedClients:data.deletedClients,contractors:data.contractors,deletedOrders:data.deletedOrders,contractTemplate:data.contractTemplate}],['rates',data.rates]];
   for(const kind of ['clients','orders','expenses','templates','tasks']) {
     for(const item of data[kind]) rows.push([kind,item]);
   }
@@ -547,6 +588,8 @@ function readCsvBackup(content) {
     else throw Error('Nieprawidłowy rekord kopii CSV.');
   }
   restored.schema=meta?.schema;
+  restored.audit=meta?.audit||[];
+  restored.deletedClients=meta?.deletedClients||[];
   if(meta?.defaultSenderId)restored.defaultSenderId=meta.defaultSenderId;
   restored.contractors=meta?.contractors||[];
   restored.polkurierSenders=meta?.polkurierSenders||[];
@@ -560,7 +603,7 @@ function validBackup(x) {
   const numeric=v=>(typeof v==='number'||string(v)&&v.trim()!=='')&&Number.isFinite(Number(v))&&Number(v)>=0;
   const client=c=>c&&string(c.id)&&string(c.first)&&string(c.last);
   const rates=r=>r&&Object.keys(rateLabels).every(k=>numeric(r[k]));
-  return (x?.contractors===undefined||Array.isArray(x.contractors)&&x.contractors.every(c=>c&&string(c.id)&&string(c.name)&&['Blat','Stelaż','Kosz na kable','Wysyłka','Dodatkowy koszt'].includes(c.target)&&['Stała kwota','m²','m³'].includes(c.method)&&numeric(c.rate)))&&(x?.polkurierSenders===undefined||Array.isArray(x.polkurierSenders)&&x.polkurierSenders.every(c=>c&&string(c.id)&&string(c.person)))&&(x?.tasks===undefined||Array.isArray(x.tasks)&&x.tasks.every(t=>t&&string(t.id)&&string(t.title)&&string(t.due)&&typeof t.done==='boolean'))&&x?.schema===1&&rates(x.rates)&&Array.isArray(x.clients)&&x.clients.every(client)&&Array.isArray(x.orders)&&
+  return (x?.audit===undefined||Array.isArray(x.audit)&&x.audit.every(e=>e&&typeof e.id==='string'&&typeof e.date==='string'&&typeof e.actor==='string'&&typeof e.operation==='string'))&&(x?.expenses===undefined||Array.isArray(x.expenses)&&x.expenses.every(e=>e&&(e.allocations===undefined||allocationsValid(e))))&&(x?.contractors===undefined||Array.isArray(x.contractors)&&x.contractors.every(c=>c&&string(c.id)&&string(c.name)&&['Blat','Stelaż','Kosz na kable','Wysyłka','Dodatkowy koszt'].includes(c.target)&&['Stała kwota','m²','m³'].includes(c.method)&&numeric(c.rate)))&&(x?.polkurierSenders===undefined||Array.isArray(x.polkurierSenders)&&x.polkurierSenders.every(c=>c&&string(c.id)&&string(c.person)))&&(x?.tasks===undefined||Array.isArray(x.tasks)&&x.tasks.every(t=>t&&string(t.id)&&string(t.title)&&string(t.due)&&typeof t.done==='boolean'))&&x?.schema===1&&rates(x.rates)&&Array.isArray(x.clients)&&x.clients.every(client)&&Array.isArray(x.orders)&&
     x.orders.every(o=>o&&string(o.id)&&string(o.number)&&string(o.date)&&client(o.client)&&rates(o.rates)&&numeric(o.length)&&numeric(o.width)&&Array.isArray(o.steps))&&
     Array.isArray(x.expenses)&&x.expenses.every(e=>e&&string(e.date)&&numeric(e.amount))&&Array.isArray(x.templates)&&x.templates.every(t=>t&&string(t.name)&&string(t.subject)&&string(t.body));
 }
@@ -602,7 +645,7 @@ function email(o) {
 function offer(o) {
   $('main').innerHTML='<p>'+button('order','Wróć do zamówienia',o.id)+'</p><section id="print"><h1>Oferta '+esc(o.number)+'</h1><p>'+esc(person(o.client))+'<br>'+esc(address(o.client))+'</p><p>Biurko dębowe '+esc(o.length)+' × '+esc(o.width)+' cm</p><p>Wykończenie '+esc(o.color==='Inny'?o.customColor:o.color)+'<br>Podcięcie '+esc(o.cut)+'<br>Przelotka '+(o.grommet?'tak':'nie')+'</p><p>Stelaż '+esc(o.frameColor)+', '+esc(o.frame)+', silniki '+esc(o.motors)+'</p><p>'+esc(o.notes)+'</p><p>Łącznie <strong>'+money(quote(o).price)+'</strong><br>Płatność '+esc(o.payment)+'</p><button onclick="window.print()">Drukuj / zapisz PDF</button></section>';
 }
-const actions={removeContractor:index=>{data.contractors.splice(Number(index),1);save();settings();},pkCsv:exportPolkurierOrder,deleteOrder,closeOrder:orders,pkShipment:shipmentForm,pkRefresh:key=>refreshShipment(key),pkLabel:key=>refreshShipment(key,true),resetContract:()=>{if(confirm('Przywrócić oryginalny wzór umowy?')){delete data.contractTemplate;save();settings();}},resetLogo:()=>{localStorage.removeItem('litydab:logo');applyLogo();settings();},removeCost:index=>{data.rates.customCosts.splice(Number(index),1);save();settings();},report:orderReport,removeTask:key=>{if(confirm('Usunąć zadanie?')){data.tasks=data.tasks.filter(t=>t.id!==key);save();tasks();}},order:orderForm,client:clientForm,backup,offer:key=>offer(data.orders.find(o=>o.id===key)),email:key=>email(data.orders.find(o=>o.id===key)),addTemplate:()=>{data.templates.push({name:'Nowy szablon',subject:'',body:''});save();settings();},removeTemplate:key=>{data.templates.splice(Number(key),1);save();settings();},contract:key=>contract(data.orders.find(o=>o.id===key))};
+const actions={deleteClient,finance,expense:expenseEditor,splitExpense:distributeExpense,invoiceDownload,chooseInvoiceFolder,auditJson:()=>exportAudit(),auditCsv:()=>exportAudit(true),editContractor:contractorId=>{settings();$('contractorForm').closest('section').remove();contractorSettings(contractorId);$('contractorForm').scrollIntoView({block:'start'});},removeContractor:index=>{data.contractors.splice(Number(index),1);save();settings();},pkCsv:exportPolkurierOrder,deleteOrder,closeOrder:orders,pkShipment:shipmentForm,pkRefresh:key=>refreshShipment(key),pkLabel:key=>refreshShipment(key,true),resetContract:()=>{if(confirm('Przywrócić oryginalny wzór umowy?')){delete data.contractTemplate;save();settings();}},resetLogo:()=>{localStorage.removeItem('litydab:logo');applyLogo();settings();},removeCost:index=>{data.rates.customCosts.splice(Number(index),1);save();settings();},report:orderReport,removeTask:key=>{if(confirm('Usunąć zadanie?')){data.tasks=data.tasks.filter(t=>t.id!==key);save();tasks();}},order:orderForm,client:clientForm,backup,offer:key=>offer(data.orders.find(o=>o.id===key)),email:key=>email(data.orders.find(o=>o.id===key)),addTemplate:()=>{data.templates.push({name:'Nowy szablon',subject:'',body:''});save();settings();},removeTemplate:key=>{data.templates.splice(Number(key),1);save();settings();},contract:key=>contract(data.orders.find(o=>o.id===key))};
 document.addEventListener('click',e=>{
   const el=e.target.closest('button,a[data-action]');
   if(!el)return;
@@ -610,7 +653,6 @@ document.addEventListener('click',e=>{
   if(el.dataset.action){if(el.tagName==='A') e.preventDefault();actions[el.dataset.action](el.dataset.id);}
 });
 window.addEventListener('storage',e=>{if(e.key===key()&&e.newValue){data=JSON.parse(e.newValue);normalize();render();}});
-load();render();
 if('serviceWorker' in navigator && location.protocol!=='file:') navigator.serviceWorker.register('./sw.js').catch(console.error);
 
 function applyLogo() {
@@ -778,7 +820,9 @@ window.LityLocal=Object.freeze({
       const existing=localStorage.getItem(key());
       data=existing?JSON.parse(existing):initial||fresh();
       normalize();localStorage.setItem(key(),JSON.stringify(data));
-    } else {space=localStorage.getItem('litydab:space')==='firma'?'firma':'demo';load();}
+    } else {space=localStorage.getItem('litydab:space')==='firma'||emptyStandalone?'firma':'demo';load();}
     render();
   }
 });
+
+load();render();

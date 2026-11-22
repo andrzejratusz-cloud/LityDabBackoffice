@@ -1,5 +1,13 @@
 # Historia wydań Lity Dąb Backoffice
 
+## v0.1.22
+
+- Usuwanie klientów, statusy na liście i podsumowanie widocznych zamówień.
+- Historia zmian z eksportem JSON i CSV oraz importem JSON.
+- Wydatki rzeczywiste, podział kosztów na zamówienia i faktury.
+- Dane kontaktowe podwykonawców.
+- Instalacja aplikacji i przenoszenie bazy z Safari do aplikacji z ikony.
+
 ## v0.1.19
 
 - Dane firmy w adresie faktury, zwarty adres klienta i kolory podsekcji.

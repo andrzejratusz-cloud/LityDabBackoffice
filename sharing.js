@@ -13,7 +13,7 @@
  const configured=(()=>{try{const u=new URL(cfg.url);return cfg.enabled===true&&u.protocol==='https:'&&/^[a-z0-9-]+\.supabase\.co$/.test(u.hostname)&&u.pathname==='/'&&typeof cfg.publicKey==='string'&&cfg.publicKey.length>20;}catch{return false;}})();
  function load(key){try{return JSON.parse(localStorage.getItem(key));}catch{return null;}}
  function persistState(){localStorage.setItem(stateKey,JSON.stringify(state));}
- function formsOpen(){return !!document.querySelector('#editor,#shipment,#mail,#taskForm,#expense');}
+ function formsOpen(){return !!document.querySelector('#editor,#shipment,#mail,#taskForm,#expense,#expenseEditor');}
  function setMessage(value){message=value;paint();}
  async function request(path,body,token){
   if(navigator.onLine===false)throw Error('Brak połączenia. Zmiany pozostają na urządzeniu.');
@@ -147,7 +147,7 @@
   button('Odśwież zaproszenia',()=>action(list));
   button('Wyloguj się',()=>confirmAction('Wylogować się?','Powrócisz do prywatnych danych lokalnych. Niewysłane wspólne zmiany pozostaną na tym urządzeniu do następnego połączenia z backoffice.',async()=>{try{await request('/auth/v1/logout',{},await accessToken());}catch{}disconnect();localStorage.removeItem(sessionKey);session=null;garageInfo=null;invites=[];message='Wylogowano na tym urządzeniu.';}));
  }
- window.litySharing=Object.freeze({render:paint,changed(){if(state){message='Oczekuje na synchronizację';setTimeout(sync,500);}}});
+ window.litySharing=Object.freeze({render:paint,actor:()=>session?.user?.email||'Użytkownik lokalny',changed(){if(state){message='Oczekuje na synchronizację';setTimeout(sync,500);}}});
  async function init(){
   if(!configured){api.switchScope(null);paint();return;}
   session=load(sessionKey);if(!session?.user?.id){session=null;paint();return;}

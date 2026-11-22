@@ -63,3 +63,7 @@ fieldset fieldset,fieldset details,.form-section .form-section,section fieldset,
 .form-section>fieldset{background:var(--stripe,#f5f1e7)}
 }
 @media(max-width:700px){.address-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.order-totals{padding:16px 0 0;line-height:1.8;border-top:1px solid var(--border,#ded9cb);margin-top:12px}
+#expenseEditor input[type=number]{max-width:180px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font:0.85em/1.4 monospace;max-width:60rem}
+.status select,select.status{max-width:175px;font-size:0.9em}
