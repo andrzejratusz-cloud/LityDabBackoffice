@@ -11,8 +11,8 @@ let journal=fs.existsSync(journalPath)?JSON.parse(fs.readFileSync(journalPath,'u
 const active=new Set();
 const session=crypto.randomBytes(32).toString('hex');
 function persist(){const temp=journalPath+'.tmp';fs.writeFileSync(temp,JSON.stringify(journal));fs.renameSync(temp,journalPath);}
-const files=new Map(['index.html','app.js','improvements.js','business.js','install.js','files.js','polkurier.js','style.css','manifest.json','sw.js','icon.svg','logo.png','CHANGELOG.md','POLKURIER.md','sharing.js','sharing-config.js','SUPABASE.md','supabase-schema.sql'].map(name=>['/'+name,name]));
-const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.svg':'image/svg+xml'};
+const files=new Map(['pwa.js','favicon.ico','app-icon-180.png','app-icon-192.png','app-icon-512.png','menu-icons.jpg','index.html','app.js','improvements.js','business.js','install.js','files.js','polkurier.js','style.css','manifest.json','sw.js','icon.svg','logo.png','CHANGELOG.md','POLKURIER.md','sharing.js','sharing-config.js','SUPABASE.md','supabase-schema.sql'].map(name=>['/'+name,name]));
+const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.svg':'image/svg+xml','.ico':'image/x-icon','.jpg':'image/jpeg'};
 const server=http.createServer(async(req,res)=>{
   const origin='http://127.0.0.1:8791';
   if(req.headers.host!=='127.0.0.1:8791'){res.writeHead(403);res.end();return;}
@@ -51,7 +51,8 @@ const server=http.createServer(async(req,res)=>{
       return;
     }
     if(req.method!=='GET'){res.writeHead(405);res.end();return;}
-    const name=files.get(req.url==='/'?'/index.html':req.url);
+    const requestPath=new URL(req.url,'http://127.0.0.1:8791').pathname;
+    const name=files.get(requestPath==='/'?'/index.html':requestPath);
     if(!name){res.writeHead(404);res.end();return;}
     res.writeHead(200,{'Content-Type':types[path.extname(name)]||'text/plain','Cache-Control':'no-store'});
     fs.createReadStream(path.join(root,name)).pipe(res);

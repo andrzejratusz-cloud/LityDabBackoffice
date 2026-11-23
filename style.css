@@ -91,3 +91,10 @@ tr.unassigned-cost td{background:#fff0cf;color:#4e370b}
  .title-row{flex-wrap:wrap}.title-row button{margin-left:auto}
 }
 @media(max-width:700px){.task-form{grid-template-columns:minmax(80px,1fr) 120px auto;gap:6px}.task-form button{grid-column:auto;font-size:12px;max-width:85px}.task-form input{padding:6px}}
+
+/* Original supplied artwork, displayed as five small sprite tiles. */
+header nav .nav-icon.menu-icon{display:inline-block!important;flex:0 0 28px;width:28px;height:28px;border-radius:6px;background-image:url('menu-icons.jpg');background-repeat:no-repeat;background-size:183.1px 99.9px;background-position-y:-33.7px;vertical-align:middle;font-size:0}
+header nav button{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+header nav .menu-icon-0{background-position-x:-9.6px}header nav .menu-icon-1{background-position-x:-43.6px}header nav .menu-icon-2{background-position-x:-77.4px}header nav .menu-icon-4{background-position-x:-111.3px}header nav .menu-icon-3{background-position-x:-145.2px}
+#pwaUpdate{position:fixed;bottom:16px;left:16px;right:16px;z-index:10000;padding:14px;background:var(--surface,#fff);color:var(--ink,#222);border:2px solid var(--accent,#24609a);border-radius:10px;box-shadow:0 4px 20px #0003}#pwaUpdate button{margin-left:10px}#appIconPreview{vertical-align:middle;object-fit:contain}
+@media print{#pwaUpdate{display:none}}

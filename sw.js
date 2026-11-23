@@ -1,21 +1,29 @@
-const cacheName = 'litydab-v0.1.23';
-const assets = ['./index.html','./app.js','./improvements.js','./business.js','./install.js','./sharing.js','./sharing-config.js','./polkurier.js','./files.js','./style.css','./manifest.json','./icon.svg','./logo.png','./CHANGELOG.md'];
-self.addEventListener('install', e => e.waitUntil(caches.open(cacheName).then(c => c.addAll(assets)).then(()=>self.skipWaiting())));
-self.addEventListener('activate', e => e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('litydab-') && k !== cacheName).map(k => caches.delete(k)))) .then(()=>self.clients.claim())));
-self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET' || !assets.some(path => new URL(path, self.registration.scope).href === e.request.url) && e.request.url !== self.registration.scope) return;
-  if(self.location.hostname==='127.0.0.1'){
-    e.respondWith(fetch(e.request,{cache:'no-store'}).catch(()=>caches.match(e.request)));
-    return;
+const cacheName='litydab-v0.1.24';
+const assets=["index.html","app.js","pwa.js","improvements.js","business.js","install.js","sharing.js","sharing-config.js","polkurier.js","files.js","style.css","manifest.json","icon.svg","logo.png","favicon.ico","app-icon-180.png","app-icon-192.png","app-icon-512.png","menu-icons.jpg","CHANGELOG.md"];
+const scope=self.registration.scope;
+const assetURLs=assets.map(name=>new URL(name,scope).href);
+self.addEventListener('install',event=>event.waitUntil((async()=>{
+ const cache=await caches.open(cacheName);
+ await cache.addAll(assetURLs.map(url=>new Request(url,{cache:'reload'})));
+ await self.skipWaiting();
+})()));
+self.addEventListener('activate',event=>event.waitUntil((async()=>{
+ for(const name of await caches.keys())if(/^litydab-v/.test(name)&&name!==cacheName)await caches.delete(name);
+ await self.clients.claim();
+})()));
+self.addEventListener('fetch',event=>{
+ const request=event.request,url=new URL(request.url);
+ if(request.method!=='GET'||url.origin!==new URL(scope).origin)return;
+ const canonical=new URL(url.pathname,url.origin).href;
+ const isNavigation=request.mode==='navigate'&&(canonical===scope||canonical===new URL('index.html',scope).href);
+ if(!isNavigation&&!assetURLs.includes(canonical))return;
+ event.respondWith((async()=>{
+  if(/\/app-icon-(180|192|512)\.png$/.test(url.pathname)){
+   const branding=await caches.open('litydab-branding'),custom=await branding.match(canonical);
+   if(custom)return custom;
   }
-  e.respondWith(caches.match(e.request.url === self.registration.scope ? './index.html' : e.request).then(hit => hit || fetch(e.request)));
+  const cache=await caches.open(cacheName);
+  const cached=await cache.match(isNavigation?new URL('index.html',scope).href:canonical);
+  return cached||fetch(request);
+ })());
 });
-
-
-
-
-
-
-
-
-

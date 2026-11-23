@@ -154,7 +154,7 @@ function save() {
   }
 }
 function render() {
-  $('nav').innerHTML=[0,1,2,4,3].map(i=>'<button class="'+(i===page?'active':'')+'" data-page="'+i+'" aria-label="'+pages[i]+'" title="'+pages[i]+'"><span class="nav-icon" aria-hidden="true">'+['▤','♙','◈','⚙','☑'][i]+'</span><span class="nav-label">'+pages[i]+'</span></button>').join('');
+  $('nav').innerHTML=[0,1,2,4,3].map(i=>'<button class="'+(i===page?'active':'')+'" data-page="'+i+'" aria-label="'+pages[i]+'" title="'+pages[i]+'"><span class="nav-icon menu-icon menu-icon-'+i+'" aria-hidden="true"></span><span class="nav-label">'+pages[i]+'</span></button>').join('');
   [orders,clients,finance,settings,tasks][page]();
   if(emptyStandalone&&!localStorage.getItem('litydab:install-transfer-complete')){
     $('main').insertAdjacentHTML('afterbegin','<section role="status"><h2>Przenieś dane z Safari</h2><p>Otworzyłeś osobny magazyn aplikacji z ikony. W Safari pobierz plik w Ustawienia → Skrót na pulpit i przeniesienie danych, a tutaj go wczytaj. Dla wspólnej bazy zaloguj się do Supabase.</p></section>');
@@ -178,12 +178,12 @@ function orderCost(orderId) {
 }
 function orders() {
   let status='';
-  $('main').innerHTML='<div class="order-toolbar"><input id="search" placeholder="Numer, klient lub adres" aria-label="Szukaj zamówień">'+button('order','Nowe zamówienie')+'</div><div id="statusButtons" role="group" aria-label="Filtr statusu">'+
+  $('main').innerHTML='<div class="order-toolbar"><input id="search" placeholder="Numer, klient lub adres" aria-label="Szukaj zamówień">'+button('order','Nowe zamówienie')+'<button type="button" id="toggleAddresses" aria-pressed="'+(localStorage.getItem('litydab:showAddresses')!=='0')+'">'+(localStorage.getItem('litydab:showAddresses')==='0'?'Pokaż adresy':'Ukryj adresy')+'</button></div><div id="statusButtons" role="group" aria-label="Filtr statusu">'+
     ['',...statuses].map(value=>'<button type="button" class="'+(value?'status status-'+statuses.indexOf(value):'')+'" data-status="'+value+'" aria-pressed="'+!value+'">'+(value||'Wszystkie')+'</button>').join('')+'</div><section id="orderRows"></section>';
   const draw = () => {
     const search = $('search').value.toLocaleLowerCase('pl');
     const rows = data.orders.filter(o=>(!status||o.status===status)&&[o.number,person(o.client),address(o.client),o.previousNumber].join(' ').toLocaleLowerCase('pl').includes(search)).sort((a,b)=>b.date.localeCompare(a.date));
-    $('orderRows').innerHTML=rows.length?table(['Numer','Klient i dostawa','Status','Realizacja','Data zamówienia','Termin','Przychód','Koszt szacowany','Dochód','Wydatki rzeczywiste',''],rows.map(o=>['<a href="#zamowienie-'+esc(o.id)+'" data-action="order" data-id="'+esc(o.id)+'">'+esc(o.number)+'</a>',esc(person(o.client))+'<br><small>'+esc(address(o.client))+'</small>','<select class="status status-'+statuses.indexOf(o.status)+'" data-order-status="'+esc(o.id)+'" aria-label="Status zamówienia '+esc(o.number)+'">'+statuses.map(status=>'<option '+(status===o.status?'selected':'')+'>'+esc(status)+'</option>').join('')+'</select>',realizationDots(o),esc(displayDate(o.date)),esc(displayDate(o.contractSent?deadline(o.contractSent):o.due)),money(quote(o).price),money(quote(o).cost),money(quote(o).price-quote(o).cost),money(actualOrderCost(o.id)),trashButton(o)])):'Brak zamówień dla wybranych filtrów.';
+    $('orderRows').innerHTML=rows.length?table(['Numer','Klient i dostawa','Status','Realizacja','Data zamówienia','Termin','Przychód','Koszt szacowany','Dochód','Wydatki rzeczywiste',''],rows.map(o=>['<a href="#zamowienie-'+esc(o.id)+'" data-action="order" data-id="'+esc(o.id)+'">'+esc(o.number)+'</a>',esc(person(o.client))+(localStorage.getItem('litydab:showAddresses')==='0'?'':'<br><small>'+esc(address(o.client))+'</small>'),'<select class="status status-'+statuses.indexOf(o.status)+'" data-order-status="'+esc(o.id)+'" aria-label="Status zamówienia '+esc(o.number)+'">'+statuses.map(status=>'<option '+(status===o.status?'selected':'')+'>'+esc(status)+'</option>').join('')+'</select>',realizationDots(o),esc(displayDate(o.date)),esc(displayDate(o.contractSent?deadline(o.contractSent):o.due)),money(quote(o).price),money(quote(o).cost),money(quote(o).price-quote(o).cost),money(actualOrderCost(o.id)),trashButton(o)])):'Brak zamówień dla wybranych filtrów.';
     const totals=rows.reduce((sum,order)=>{const q=quote(order);return {revenue:sum.revenue+Math.round(q.price*100),cost:sum.cost+Math.round(q.cost*100),actual:sum.actual+Math.round(actualOrderCost(order.id)*100)};},{revenue:0,cost:0,actual:0});
     $('orderRows').insertAdjacentHTML('beforeend','<div class="order-totals">Podsumowanie widocznych zamówień · Przychód <strong>'+money(totals.revenue/100)+'</strong> · Koszt szacowany <strong>'+money(totals.cost/100)+'</strong> · Dochód <strong>'+money((totals.revenue-totals.cost)/100)+'</strong> · Wydatki rzeczywiste <strong>'+money(totals.actual/100)+'</strong></div>');
     $('orderRows').querySelectorAll('[data-order-status]').forEach(control=>control.onchange=()=>{
@@ -192,6 +192,7 @@ function orders() {
       order.status=control.value;save();draw();
     });
   };
+  $('toggleAddresses').onclick=()=>{const show=localStorage.getItem('litydab:showAddresses')==='0';localStorage.setItem('litydab:showAddresses',show?'1':'0');$('toggleAddresses').textContent=show?'Ukryj adresy':'Pokaż adresy';$('toggleAddresses').setAttribute('aria-pressed',String(show));draw();};
   $('search').oninput=draw;
   $('statusButtons').onclick=e=>{
     const filter=e.target.closest('button[data-status]');
@@ -496,7 +497,7 @@ function sharingSettings() {
 }
 function settings() {
   $('main').innerHTML='<h1>Ustawienia</h1><section><h2>Wygląd i przestrzeń</h2>'+
-    grid('<label>Motyw<select id="theme">'+themes.map(value=>'<option>'+value+'</option>').join('')+'</select></label>'+select('font','Wielkość czcionki',fontSizes.map(n=>n+'%'),(localStorage.getItem('litydab:font')||100)+'%')+select('scale','Skala interfejsu',scales.map(n=>n+'%'),(localStorage.getItem('litydab:scale')||100)+'%')+'<label>Przestrzeń<select id="space"><option value="demo">Demonstracyjna</option><option value="firma">Firmowa</option></select></label>')+'</section><section><h2>Wersja aplikacji</h2><p>Lity Dąb Backoffice <strong>v0.1.23</strong></p><p><a href="CHANGELOG.md" target="_blank" rel="noopener">Historia wydań</a></p></section><section><h2>Cennik</h2><form id="rates">'+grid(Object.entries({...rateLabels,basketCost:'Kosz na kable'}).map(([k,l])=>num(k,l,data.rates[k],k==='thickness'?0.01:0)).join(''))+'<p><button>Zapisz stawki domyślne</button></p></form>'+
+    grid('<label>Motyw<select id="theme">'+themes.map(value=>'<option>'+value+'</option>').join('')+'</select></label>'+select('font','Wielkość czcionki',fontSizes.map(n=>n+'%'),(localStorage.getItem('litydab:font')||100)+'%')+select('scale','Skala interfejsu',scales.map(n=>n+'%'),(localStorage.getItem('litydab:scale')||100)+'%')+'<label>Przestrzeń<select id="space"><option value="demo">Demonstracyjna</option><option value="firma">Firmowa</option></select></label>')+'</section><section><h2>Wersja aplikacji</h2><p>Lity Dąb Backoffice <strong>v0.1.24</strong></p><p><a href="CHANGELOG.md" target="_blank" rel="noopener">Historia wydań</a></p></section><section><h2>Cennik</h2><form id="rates">'+grid(Object.entries({...rateLabels,basketCost:'Kosz na kable'}).map(([k,l])=>num(k,l,data.rates[k],k==='thickness'?0.01:0)).join(''))+'<p><button>Zapisz stawki domyślne</button></p></form>'+
     '<h3>Dodatkowe koszty</h3>'+table(['Nazwa','Koszt (zł)',''],(data.rates.customCosts||[]).map((c,i)=>[esc(c.label),money(c.amount),button('removeCost','Usuń',i)]))+
     '<form id="catalog">'+grid(input('label','Nazwa kosztu','','text','required')+num('amount','Koszt (zł)'))+'<p><button>Dodaj koszt do cennika</button></p></form></section>'+
     '<section><h2>Szablony wiadomości</h2><p class="muted">Pola: {{imię}}, {{numer}}, {{wymiary}}, {{cena}}, {{przesyłka}}</p>'+data.templates.map((t,i)=>fold(esc(t.name),'<form class="template" data-index="'+i+'">'+input('name','Nazwa',t.name,'text','required')+input('subject','Temat',t.subject)+area('body','Treść',t.body)+'<p><button>Zapisz</button> '+button('removeTemplate','Usuń',i)+'</p></form>')).join('')+button('addTemplate','Dodaj szablon')+'</section>'+
@@ -527,6 +528,7 @@ function settings() {
     };
     reader.readAsDataURL(file);
   };
+  iconSettings();
   contractorSettings();
   pkSettings();
   sharingSettings();
@@ -664,12 +666,12 @@ document.addEventListener('click',e=>{
   if(el.dataset.action){if(el.tagName==='A') e.preventDefault();actions[el.dataset.action](el.dataset.id);}
 });
 window.addEventListener('storage',e=>{if(e.key===key()&&e.newValue){data=JSON.parse(e.newValue);normalize();render();}});
-if('serviceWorker' in navigator && location.protocol!=='file:') navigator.serviceWorker.register('./sw.js').catch(console.error);
+// Service worker lifecycle is handled in pwa.js.
 
 function applyLogo() {
   const logo=localStorage.getItem('litydab:logo');
   $('appLogo').src=logo&&/^data:image\/(png|jpeg|webp);base64,/.test(logo)?logo:'logo.png';
-  document.querySelector('link[rel="icon"]').href=$('appLogo').src;
+
 }
 const defaultContractTemplate=`# Umowa
 Zamówienie {{numer}}

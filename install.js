@@ -7,7 +7,7 @@ function installationBundle() {
     type:'litydab-device-transfer',version:1,space,
     data:JSON.parse(JSON.stringify(data)),
     publicSharing:window.LITY_SHARING_CONFIG||null,
-    appearance:{theme:localStorage.getItem('litydab:theme'),font:localStorage.getItem('litydab:font'),scale:localStorage.getItem('litydab:scale'),logo:localStorage.getItem('litydab:logo')}
+    appearance:{theme:localStorage.getItem('litydab:theme'),font:localStorage.getItem('litydab:font'),scale:localStorage.getItem('litydab:scale'),logo:localStorage.getItem('litydab:logo'),appIcon:localStorage.getItem('litydab:appIcon')}
   };
 }
 function exportInstallData() {
@@ -41,7 +41,7 @@ function installSettings() {
       space=bundle.space;localStorage.setItem('litydab:space',space);
       data=bundle.data;normalize();save();
       if(bundle.publicSharing?.url&&bundle.publicSharing?.publicKey)localStorage.setItem('litydab-sharing-config',JSON.stringify(bundle.publicSharing));
-      for(const name of ['theme','font','scale','logo']){
+      for(const name of ['theme','font','scale','logo','appIcon']){
         const value=bundle.appearance?.[name];
         if(typeof value==='string'&&value.length<1500000)localStorage.setItem('litydab:'+name,value);
       }

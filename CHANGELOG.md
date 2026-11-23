@@ -1,3 +1,11 @@
+# v0.1.24
+
+- Favicon ICO/PNG w ustawieniach, osobna ikona PWA i Apple Touch Icon.
+- Sprawdzanie aktualizacji po uruchomieniu, powrocie do aplikacji i co 5 minut.
+- Powiadomienie o aktualizacji podczas edycji formularza.
+- Przełącznik adresów na liście zamówień.
+- Ikony menu z dostarczonej grafiki w rozmiarze 28 px.
+
 # v0.1.23
 
 - Synchronizacja danych klienta między bazą klientów i powiązanymi zamówieniami przy zapisie.

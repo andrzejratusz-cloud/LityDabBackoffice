@@ -1,4 +1,4 @@
-# Lity Dąb Backoffice v0.1.11
+# Lity Dąb Backoffice v0.1.24
 
 Otwórz index.html w Edge lub Chrome, aby wypróbować wersję demonstracyjną. Zapis danych dla plików otwieranych bezpośrednio zależy od przeglądarki. Do stałego użytku uruchom aplikację pod stałym adresem localhost lub HTTPS. Service worker działa na localhost/HTTPS. Zmiana adresu, portu lub profilu przeglądarki zmienia miejsce przechowywania danych.
 
@@ -40,3 +40,17 @@ Usunięcie klienta zachowuje dane klienta w historycznych zamówieniach. Usunię
 Wersja 0.1.23 używa tych samych lokalnych baz i ustawień przeglądarki. Uruchom na dotychczasowym adresie http://127.0.0.1:8791, aby zachować dostęp do lokalnej bazy. Dane klienta synchronizują się po zapisaniu formularza.
 
 Pełne ścieżki folderów wpisz w ustawieniach po skopiowaniu z Eksploratora. Przeglądarka przekazuje aplikacji nazwę i uchwyt wybranego folderu. Daty w formularzach wpisuj w formacie DD.MM.YYYY.
+
+## Aktualizacja PWA i ikony w v0.1.24
+
+Na GitHub Pages podmień komplet plików z tej paczki, w tym sw.js, pwa.js, manifest.json, menu-icons.jpg, favicon.ico i app-icon-*.png. Zachowaj ten sam adres repozytorium i strony, aby nie zmieniać magazynu danych.
+
+Aplikacja sprawdza nową wersję przy uruchomieniu, powrocie z tła, odzyskaniu połączenia i co 5 minut aktywności. Nowa wersja jest pobierana w całości przed aktywacją. Przy niezapisanej edycji pojawia się przycisk odświeżenia. Offline pozostaje poprzednia kompletna wersja.
+
+Przy przejściu ze starszego wydania po pierwszym wejściu online zamknij aplikację z ikony i otwórz ją ponownie. Nie czyść danych witryny ani nie usuwaj aplikacji bez kopii JSON. Sprawdź numer wersji w nagłówku.
+
+Ustawienia → Logo: własne ICO/PNG zmienia faviconę i ikony PWA na tym urządzeniu. Plik ICO jest przeliczany do kwadratowych PNG. Przed utworzeniem skrótu wybierz ikonę i pozostaw aplikację online do zakończenia zapisu. W iOS istniejący skrót może zachować starą ikonę. System decyduje o odświeżaniu ikon. Aby ustawić własną ikonę dla wszystkich użytkowników, pobierz PNG 180/192/512 z ustawień i podmień odpowiednie app-icon-*.png na GitHub oraz favicon.ico. Zmiana w ustawieniach sama nie publikuje plików na GitHub.
+
+Ikona własna jest przenoszona w pliku „Pobierz dane do przeniesienia”. Standardowy backup danych zamówień nie obejmuje wyglądu urządzenia. Nie usuwaj istniejącego skrótu z danymi bez wykonania kopii.
+
+Funkcje instalacji i aktualizacji PWA wymagają HTTPS (GitHub Pages) lub localhost. Otwarcie index.html z dysku służy do podglądu interfejsu.
