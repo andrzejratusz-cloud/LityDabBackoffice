@@ -67,3 +67,27 @@ fieldset fieldset,fieldset details,.form-section .form-section,section fieldset,
 #expenseEditor input[type=number]{max-width:180px}
 pre{white-space:pre-wrap;overflow-wrap:anywhere;font:0.85em/1.4 monospace;max-width:60rem}
 .status select,select.status{max-width:175px;font-size:0.9em}
+
+.title-row{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:12px 0}
+.title-row h1{margin:0}.right-actions{display:flex;justify-content:flex-end;margin-bottom:12px}
+.order-toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px}.order-toolbar input{max-width:420px;flex:1}.order-toolbar button{margin-left:auto}
+.realization-dots{display:flex;gap:5px;white-space:nowrap}.realization-dot{display:inline-block;width:18px;height:18px;border:1px solid currentColor;border-radius:50%}
+[data-step-status="0"]{background:#edf0f4;color:#344054}[data-step-status="1"]{background:#fff0cf;color:#704900}[data-step-status="2"]{background:#dff1d8;color:#285b26}[data-step-status="3"]{background:#eae5f9;color:#4f347d}
+.task-form{display:grid;grid-template-columns:minmax(150px,1fr) 165px auto;align-items:end;gap:14px}.task-form label{min-width:0}.task-form input{width:100%;min-width:0}
+tr.task-done td:not(:first-child):not(:last-child){text-decoration:line-through;opacity:.6}
+tr.unassigned-cost td{background:#fff0cf;color:#4e370b}
+.settings-section{background:var(--surface,#fff);border:1px solid var(--border,#ded9cb);border-radius:10px;margin:14px 0;padding:16px}
+.settings-section>summary{font-size:1.2em;font-weight:600;cursor:pointer;padding:3px 0}.settings-section[open]>summary{margin-bottom:18px}
+.form-section{border:1px solid var(--border,#ded9cb);border-radius:10px;padding:12px;background:var(--stripe,#f5f1e7)}
+.form-section .form-section{background:var(--surface,#fff)}
+#sharingModule label,#shareConfig label{display:flex;flex-direction:column;gap:7px;min-width:0;margin-bottom:10px}
+#sharingModule input,#sharingModule select,#shareConfig input{width:100%;min-width:0}
+#expenseEditor td label{margin:0}#expenseEditor td input[type=number]{max-width:160px}
+.folder-path{overflow-wrap:anywhere;font-family:monospace}.nav-icon{display:none}
+@media(max-width:700px){
+ #nav{gap:6px;padding:0;flex-wrap:nowrap}#nav button{width:42px;height:42px;padding:7px;display:grid;place-items:center}
+ .nav-label{display:none}.nav-icon{display:inline;font-size:23px}
+ .task-form{grid-template-columns:minmax(100px,1fr) 140px}.task-form button{grid-column:1/-1;justify-self:end}
+ .title-row{flex-wrap:wrap}.title-row button{margin-left:auto}
+}
+@media(max-width:700px){.task-form{grid-template-columns:minmax(80px,1fr) 120px auto;gap:6px}.task-form button{grid-column:auto;font-size:12px;max-width:85px}.task-form input{padding:6px}}

@@ -1,3 +1,12 @@
+# v0.1.23
+
+- Synchronizacja danych klienta między bazą klientów i powiązanymi zamówieniami przy zapisie.
+- Pięć wskaźników realizacji na liście zamówień.
+- Ilość, cena jednostkowa i nieprzypisana część wydatków wraz z podświetleniem.
+- Zwijane ustawienia, uporządkowane przyciski i formularze, tabela zadań.
+- Ikona strony z logo, mobilne menu ikonowe i daty DD.MM.YYYY.
+- Pola do zapisania pełnej ścieżki folderów. Ścieżkę należy skopiować z Eksploratora, ponieważ API przeglądarki przekazuje tylko nazwę folderu.
+
 # Historia wydań Lity Dąb Backoffice
 
 ## v0.1.22

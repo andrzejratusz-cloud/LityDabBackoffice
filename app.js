@@ -2,6 +2,7 @@
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const money = value => new Intl.NumberFormat('pl-PL',{style:'currency',currency:'PLN'}).format(value);
+const displayDate = value => String(value||'').replace(/^(\d{4})-(\d{2})-(\d{2})(.*)$/, '$3.$2.$1$4');
 const today = () => new Date().toLocaleDateString('sv-SE');
 const id = () => crypto.randomUUID();
 const statuses = ['Oferta','Potwierdzone','W realizacji','Gotowe do wysyłki','Wysłane','Zakończone','Anulowane'];
@@ -143,7 +144,7 @@ function save() {
   const storageKey=key();
   const previous=JSON.parse(localStorage.getItem(storageKey)||'null');
   try {
-    if(previous)logChanges(previous,data);
+    if(previous){syncClients(previous,data);logChanges(previous,data);}
     localStorage.setItem(storageKey,JSON.stringify(data));
     window.litySharing?.changed();
   } catch(error) {
@@ -153,7 +154,7 @@ function save() {
   }
 }
 function render() {
-  $('nav').innerHTML=pages.map((p,i)=>'<button class="'+(i===page?'active':'')+'" data-page="'+i+'">'+p+'</button>').join('');
+  $('nav').innerHTML=[0,1,2,4,3].map(i=>'<button class="'+(i===page?'active':'')+'" data-page="'+i+'" aria-label="'+pages[i]+'" title="'+pages[i]+'"><span class="nav-icon" aria-hidden="true">'+['▤','♙','◈','⚙','☑'][i]+'</span><span class="nav-label">'+pages[i]+'</span></button>').join('');
   [orders,clients,finance,settings,tasks][page]();
   if(emptyStandalone&&!localStorage.getItem('litydab:install-transfer-complete')){
     $('main').insertAdjacentHTML('afterbegin','<section role="status"><h2>Przenieś dane z Safari</h2><p>Otworzyłeś osobny magazyn aplikacji z ikony. W Safari pobierz plik w Ustawienia → Skrót na pulpit i przeniesienie danych, a tutaj go wczytaj. Dla wspólnej bazy zaloguj się do Supabase.</p></section>');
@@ -170,7 +171,7 @@ const button = (action,label,value='') => '<button type="button" data-action="'+
 const table = (headers,rows) => '<div class="table"><table><thead><tr>'+headers.map(h=>'<th>'+h+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map(cell=>'<td>'+cell+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
 const person = c => [c.first,c.last].join(' ');
 const address = c => [[c.street,c.house].filter(Boolean).join(' ')+(c.flat?'/'+c.flat:''),[c.zip,c.city].filter(Boolean).join(' ')].filter(Boolean).join(', ');
-const values = f => Object.fromEntries(new FormData(f));
+const values = f => Object.fromEntries([...new FormData(f)].map(([name,value])=>[name,f.elements.namedItem(name)?.dataset?.date?isoDate(value):value]));
 const put = (list,item) => {const i=list.findIndex(x=>x.id===item.id); if(i<0) list.push(item); else list[i]=item;};
 function orderCost(orderId) {
   return data.expenses.reduce((sum,expense)=>sum+(expense.order===orderId?Math.round(Number(expense.amount)*100):0),0)/100;
@@ -182,7 +183,7 @@ function orders() {
   const draw = () => {
     const search = $('search').value.toLocaleLowerCase('pl');
     const rows = data.orders.filter(o=>(!status||o.status===status)&&[o.number,person(o.client),address(o.client),o.previousNumber].join(' ').toLocaleLowerCase('pl').includes(search)).sort((a,b)=>b.date.localeCompare(a.date));
-    $('orderRows').innerHTML=rows.length?table(['Numer','Klient i dostawa','Status','Data zamówienia','Termin','Przychód','Koszt szacowany','Dochód','Wydatki rzeczywiste',''],rows.map(o=>['<a href="#zamowienie-'+esc(o.id)+'" data-action="order" data-id="'+esc(o.id)+'">'+esc(o.number)+'</a>',esc(person(o.client))+'<br><small>'+esc(address(o.client))+'</small>','<select class="status status-'+statuses.indexOf(o.status)+'" data-order-status="'+esc(o.id)+'" aria-label="Status zamówienia '+esc(o.number)+'">'+statuses.map(status=>'<option '+(status===o.status?'selected':'')+'>'+esc(status)+'</option>').join('')+'</select>',esc(o.date),esc(o.contractSent?deadline(o.contractSent):o.due),money(quote(o).price),money(quote(o).cost),money(quote(o).price-quote(o).cost),money(actualOrderCost(o.id)),trashButton(o)])):'Brak zamówień dla wybranych filtrów.';
+    $('orderRows').innerHTML=rows.length?table(['Numer','Klient i dostawa','Status','Realizacja','Data zamówienia','Termin','Przychód','Koszt szacowany','Dochód','Wydatki rzeczywiste',''],rows.map(o=>['<a href="#zamowienie-'+esc(o.id)+'" data-action="order" data-id="'+esc(o.id)+'">'+esc(o.number)+'</a>',esc(person(o.client))+'<br><small>'+esc(address(o.client))+'</small>','<select class="status status-'+statuses.indexOf(o.status)+'" data-order-status="'+esc(o.id)+'" aria-label="Status zamówienia '+esc(o.number)+'">'+statuses.map(status=>'<option '+(status===o.status?'selected':'')+'>'+esc(status)+'</option>').join('')+'</select>',realizationDots(o),esc(displayDate(o.date)),esc(displayDate(o.contractSent?deadline(o.contractSent):o.due)),money(quote(o).price),money(quote(o).cost),money(quote(o).price-quote(o).cost),money(actualOrderCost(o.id)),trashButton(o)])):'Brak zamówień dla wybranych filtrów.';
     const totals=rows.reduce((sum,order)=>{const q=quote(order);return {revenue:sum.revenue+Math.round(q.price*100),cost:sum.cost+Math.round(q.cost*100),actual:sum.actual+Math.round(actualOrderCost(order.id)*100)};},{revenue:0,cost:0,actual:0});
     $('orderRows').insertAdjacentHTML('beforeend','<div class="order-totals">Podsumowanie widocznych zamówień · Przychód <strong>'+money(totals.revenue/100)+'</strong> · Koszt szacowany <strong>'+money(totals.cost/100)+'</strong> · Dochód <strong>'+money((totals.revenue-totals.cost)/100)+'</strong> · Wydatki rzeczywiste <strong>'+money(totals.actual/100)+'</strong></div>');
     $('orderRows').querySelectorAll('[data-order-status]').forEach(control=>control.onchange=()=>{
@@ -219,7 +220,7 @@ function clientFields(c,collapse=false) {
     '<fieldset><legend>Adres faktury</legend>'+grid(input('company','Nazwa firmy',c.company)+input('nip','NIP',c.nip))+'<fieldset class="billing"><legend>Inny adres faktury</legend>'+grid(Object.entries(addressFields).map(([key,label])=>input('bill_'+key,label,c['bill_'+key])).join(''))+'</fieldset></fieldset>';
 }
 function clients() {
-  $('main').innerHTML='<h1>Baza klientów</h1>'+button('client','Nowy klient')+table(['Imię','Nazwisko','E-mail','Telefon','Adres klienta / faktury',''],data.clients.map(c=>[esc(c.first),esc(c.last),esc(c.email),esc(c.phone),esc(address(c))+(c.same===false?'<br><small>Faktura: '+esc(billingAddress(c))+'</small>':''),button('client','Otwórz',c.id)+' '+button('deleteClient','Usuń klienta',c.id)]));
+  $('main').innerHTML='<div class="title-row"><h1>Baza klientów</h1>'+button('client','Dodaj klienta')+'</div>'+table(['Imię','Nazwisko','E-mail','Telefon','Adres klienta / faktury',''],data.clients.map(c=>[esc(c.first),esc(c.last),esc(c.email),esc(c.phone),esc(address(c))+(c.same===false?'<br><small>Faktura: '+esc(billingAddress(c))+'</small>':''),button('client','Otwórz',c.id)+' '+button('deleteClient','Usuń klienta',c.id)]));
 }
 function clientForm(clientId) {
   const c=data.clients.find(x=>x.id===clientId)||{};
@@ -245,7 +246,7 @@ function orderActions(order) {
 }
 function orderForm(orderId) {
   const o=data.orders.find(x=>x.id===orderId)||{date:today(),due:'',length:120,width:60,rates:{...data.rates},steps:[]};
-  const c=o.client||{};
+  const c=data.clients.find(client=>client.id===o.clientId)||o.client||{};
   const customCosts=[...(o.additionalCosts||[])];
   const dimensions=o.length+' x '+o.width;
   $('main').innerHTML='<h1>'+esc(o.number||'Nowe zamówienie')+'</h1><form id="editor">'+orderActions(o)+
@@ -397,12 +398,12 @@ function orderForm(orderId) {
     if(Number(item.deposit)>quote(item).price) {alert('Zaliczka przekracza cenę zamówienia.');return;}
     if(Number(item.paid)>0 && !item.paidDate) {alert('Podaj datę wpłaty.');return;}
     if(!$('customer').value && !o.id) item.client.id=item.clientId=id();
-    if(!$('customer').value && o.id && item.clientId===o.clientId&&!(data.deletedClients||[]).some(c=>c.id===o.clientId)) item.client.id=item.clientId=id();
+
     item.id=o.id||id();
     if(Number(item.discountAmount)>quote(item,true).price||Number(item.discountPercent)>100){alert('Zniżka nie może przekraczać wartości oferty.');return;}
     item.number=o.date===item.date&&o.number?o.number:nextNumber(item.date,[...data.orders,...(data.deletedOrders||[])]);
     if(!item.number){alert('Dla tej daty wykorzystano wszystkie numery od 01 do 99.');return;}
-    if(!data.clients.some(x=>x.id===item.clientId)&&!(data.deletedClients||[]).some(c=>c.id===item.clientId)) data.clients.push(item.client);
+    if(!(data.deletedClients||[]).some(c=>c.id===item.clientId)) put(data.clients,item.client);
     const workspace=space;
     item.folderName ||= orderFolderName(item);
     put(data.orders,item);save();
@@ -419,15 +420,18 @@ function orderForm(orderId) {
 }
 function tasks() {
   const ordered=[...data.tasks].sort((a,b)=>Number(a.done)-Number(b.done)||(a.due||'9999').localeCompare(b.due||'9999'));
-  $('main').innerHTML='<h1>Zadania</h1><section><form id="taskForm">'+grid(input('title','Co planujesz zrobić?','','text','required')+input('due','Termin','','date'))+'<p><button>Dodaj zadanie</button></p></form></section><section>'+
-    (ordered.length?ordered.map(t=>'<p><label><input type="checkbox" data-task="'+esc(t.id)+'" '+(t.done?'checked':'')+'> '+esc(t.title)+(t.due?' · '+esc(t.due):'')+'</label> '+button('removeTask','Usuń',t.id)+'</p>').join(''):'<p>Brak zadań.</p>')+'</section>';
+  $('main').innerHTML='<h1>Zadania</h1><section><form id="taskForm" class="task-form">'+input('title','Opis','','text','required')+input('due','Termin','','date')+'<button>Dodaj zadanie</button></form></section><section>'+
+    (ordered.length?table(['','Opis','Termin',''],ordered.map(t=>['<input type="checkbox" aria-label="Ukończ zadanie '+esc(t.title)+'" data-task="'+esc(t.id)+'" '+(t.done?'checked':'')+'>','<span class="'+(t.done?'task-done':'')+'">'+esc(t.title)+'</span>',esc(displayDate(t.due)),'<button type="button" data-action="removeTask" data-id="'+esc(t.id)+'" aria-label="Usuń zadanie" title="Usuń zadanie">🗑</button>'])):'<p>Brak zadań.</p>')+'</section>';
   $('taskForm').onsubmit=e=>{e.preventDefault();const task=values(e.target);task.title=task.title.trim();if(!task.title)return;data.tasks.push({...task,id:id(),done:false});save();tasks();};
-  $('main').querySelectorAll('[data-task]').forEach(box=>box.onchange=()=>{data.tasks.find(t=>t.id===box.dataset.task).done=box.checked;save();tasks();});
+  $('main').querySelectorAll('[data-task]').forEach(box=>{
+    box.closest('tr').classList.toggle('task-done',box.checked);
+    box.onchange=()=>{data.tasks.find(t=>t.id===box.dataset.task).done=box.checked;save();tasks();};
+  });
 }
 function finance() {
-  $('main').innerHTML='<h1>Koszty i przychody</h1>'+button('expense','Dodaj wydatek rzeczywisty')+
+  $('main').innerHTML='<div class="title-row"><h1>Koszty i przychody</h1>'+button('expense','Dodaj wydatek rzeczywisty')+'</div>'+
     grid('<label>Od <input id="from" type="date"></label><label>Do <input id="to" type="date"></label><label>Wykres <select id="metric"><option value="0">Wpłaty</option><option value="1">Wydatki rzeczywiste</option><option value="2">Wynik kasowy</option><option value="3">Przychód z zamówień</option></select></label>')+
-    '<section id="totals"></section><section><h2>Wydatki rzeczywiste</h2><div id="expenseRows"></div></section>';
+    '<section id="totals"></section><section><h2>Wydatki rzeczywiste</h2><label class="check"><input type="checkbox" id="highlightUnassigned"> Podświetl koszty z nieprzypisaną kwotą</label><p id="unassignedTotal"></p><div id="expenseRows"></div></section>';
   const draw=()=>{
     const within=date=>date&&(!$('from').value||date>=$('from').value)&&(!$('to').value||date<=$('to').value);
     const expenses=data.expenses.filter(e=>within(e.date));
@@ -443,16 +447,22 @@ function finance() {
     $('totals').innerHTML='<strong>Wpłaty '+money(income)+' · wydatki rzeczywiste '+money(cost)+' · wynik kasowy '+money(income-cost)+'</strong><p>Przychód z zamówień według ofert '+money(orders.reduce((sum,o)=>sum+quote(o).price,0))+'</p>'+
       bars.map(([month,amount])=>'<div>'+month+' · '+money(amount)+'<progress aria-label="'+month+'" max="'+scale+'" value="'+Math.abs(amount)+'"></progress></div>').join('');
     const allOrders=[...data.orders,...(data.deletedOrders||[])];
-    $('expenseRows').innerHTML=table(['Data','Opis','Faktura / sprzedawca','Podział na zamówienia','Kwota',''],expenses.map(expense=>{
+    $('expenseRows').innerHTML=table(['Data','Nazwa','Faktura / sprzedawca','Podział na zamówienia','Ilość','Cena jednostkowa','Kwota','Nieprzypisane',''],expenses.map(expense=>{
       const allocations=expense.allocations??(expense.order?[{orderId:expense.order,amount:Number(expense.amount)}]:[]);
       const general=Number(expense.amount)-allocationSum({allocations});
-      return [esc(expense.date),esc(expense.name),esc(expense.invoiceNumber)+'<br>'+esc(expense.supplier),
+      return [esc(displayDate(expense.date)),esc(expense.name),esc(expense.invoiceNumber)+'<br>'+esc(expense.supplier),
         allocations.map(a=>esc(allOrders.find(o=>o.id===a.orderId)?.number||a.orderId)+' · '+money(a.amount)).join('<br>')+(general>0?'<br>Ogólne · '+money(general):''),
-        money(expense.amount),button('expense','Edytuj / faktury',expense.id)];
+        esc(expense.quantity||1),money(Number(expense.amount)/(expense.quantity||1)),money(expense.amount),'<span data-unassigned="'+Math.round(general*100)+'">'+money(general)+'</span>',button('expense','Edytuj / faktury',expense.id)];
     }));
   };
-  for(const field of ['from','to','metric'])$(field).onchange=draw;
-  draw();
+  const highlight=()=>{
+    $('expenseRows').querySelectorAll('[data-unassigned]').forEach(cell=>cell.closest('tr').classList.toggle('unassigned-cost',$('highlightUnassigned').checked&&Number(cell.dataset.unassigned)>0));
+    const amounts=[...$('expenseRows').querySelectorAll('[data-unassigned]')].map(cell=>Number(cell.dataset.unassigned));
+    $('unassignedTotal').textContent='Nieprzypisane do zamówień: '+money(amounts.reduce((a,b)=>a+b,0)/100)+' · '+amounts.filter(value=>value>0).length+' wydatków';
+  };
+  $('highlightUnassigned').onchange=highlight;
+  for(const field of ['from','to','metric'])$(field).onchange=()=>{draw();highlight();};
+  draw();highlight();
 }
 function contractorSettings(contractorId) {
   const current=data.contractors.find(c=>c.id===contractorId)||{};
@@ -468,7 +478,7 @@ function sharingSettings() {
   let config={};
   try{config=JSON.parse(localStorage.getItem('litydab-sharing-config')||'{}');}catch{}
   $('main').insertAdjacentHTML('beforeend','<section><h2>Współdzielenie aplikacji</h2><div id="sharingModule"><label>E-mail<input type="email" placeholder="Twój adres e-mail" disabled></label><p role="status">Moduł logowania nie został wczytany. Uruchom ponownie lokalny serwer z bieżącej paczki i odśwież stronę.</p></div>'+
-    '<details><summary>Konfiguracja Supabase — administrator</summary><p><a href="SUPABASE.md" target="_blank">Instrukcja konfiguracji</a></p><form id="shareConfig">'+grid(input('url','Project URL',config.url,'url','required')+input('publicKey','Publiczny klucz publishable / anon',config.publicKey,'text','required'))+
+    '<details class="form-section"><summary>Konfiguracja Supabase — administrator</summary><p><a href="SUPABASE.md" target="_blank">Instrukcja konfiguracji</a></p><form id="shareConfig">'+grid(input('url','Project URL',config.url,'url','required')+input('publicKey','Publiczny klucz publishable / anon',config.publicKey,'text','required'))+
     '<p><button>Zapisz konfigurację i przeładuj</button></p></form></details></section>');
   $('shareConfig').onsubmit=e=>{
     e.preventDefault();
@@ -486,7 +496,7 @@ function sharingSettings() {
 }
 function settings() {
   $('main').innerHTML='<h1>Ustawienia</h1><section><h2>Wygląd i przestrzeń</h2>'+
-    grid('<label>Motyw<select id="theme">'+themes.map(value=>'<option>'+value+'</option>').join('')+'</select></label>'+select('font','Wielkość czcionki',fontSizes.map(n=>n+'%'),(localStorage.getItem('litydab:font')||100)+'%')+select('scale','Skala interfejsu',scales.map(n=>n+'%'),(localStorage.getItem('litydab:scale')||100)+'%')+'<label>Przestrzeń<select id="space"><option value="demo">Demonstracyjna</option><option value="firma">Firmowa</option></select></label>')+'</section><section><h2>Wersja aplikacji</h2><p>Lity Dąb Backoffice <strong>v0.1.22</strong></p><p><a href="CHANGELOG.md" target="_blank" rel="noopener">Historia wydań</a></p></section><section><h2>Cennik</h2><form id="rates">'+grid(Object.entries({...rateLabels,basketCost:'Kosz na kable'}).map(([k,l])=>num(k,l,data.rates[k],k==='thickness'?0.01:0)).join(''))+'<p><button>Zapisz stawki domyślne</button></p></form>'+
+    grid('<label>Motyw<select id="theme">'+themes.map(value=>'<option>'+value+'</option>').join('')+'</select></label>'+select('font','Wielkość czcionki',fontSizes.map(n=>n+'%'),(localStorage.getItem('litydab:font')||100)+'%')+select('scale','Skala interfejsu',scales.map(n=>n+'%'),(localStorage.getItem('litydab:scale')||100)+'%')+'<label>Przestrzeń<select id="space"><option value="demo">Demonstracyjna</option><option value="firma">Firmowa</option></select></label>')+'</section><section><h2>Wersja aplikacji</h2><p>Lity Dąb Backoffice <strong>v0.1.23</strong></p><p><a href="CHANGELOG.md" target="_blank" rel="noopener">Historia wydań</a></p></section><section><h2>Cennik</h2><form id="rates">'+grid(Object.entries({...rateLabels,basketCost:'Kosz na kable'}).map(([k,l])=>num(k,l,data.rates[k],k==='thickness'?0.01:0)).join(''))+'<p><button>Zapisz stawki domyślne</button></p></form>'+
     '<h3>Dodatkowe koszty</h3>'+table(['Nazwa','Koszt (zł)',''],(data.rates.customCosts||[]).map((c,i)=>[esc(c.label),money(c.amount),button('removeCost','Usuń',i)]))+
     '<form id="catalog">'+grid(input('label','Nazwa kosztu','','text','required')+num('amount','Koszt (zł)'))+'<p><button>Dodaj koszt do cennika</button></p></form></section>'+
     '<section><h2>Szablony wiadomości</h2><p class="muted">Pola: {{imię}}, {{numer}}, {{wymiary}}, {{cena}}, {{przesyłka}}</p>'+data.templates.map((t,i)=>fold(esc(t.name),'<form class="template" data-index="'+i+'">'+input('name','Nazwa',t.name,'text','required')+input('subject','Temat',t.subject)+area('body','Treść',t.body)+'<p><button>Zapisz</button> '+button('removeTemplate','Usuń',i)+'</p></form>')).join('')+button('addTemplate','Dodaj szablon')+'</section>'+
@@ -523,6 +533,7 @@ function settings() {
   auditSettings();
   invoiceSettings();
   installSettings();
+  makeSettingsCollapsible();
   $('chooseFolder').onclick=chooseFolder;
   showFolder();
   $('space').value=space;
@@ -658,6 +669,7 @@ if('serviceWorker' in navigator && location.protocol!=='file:') navigator.servic
 function applyLogo() {
   const logo=localStorage.getItem('litydab:logo');
   $('appLogo').src=logo&&/^data:image\/(png|jpeg|webp);base64,/.test(logo)?logo:'logo.png';
+  document.querySelector('link[rel="icon"]').href=$('appLogo').src;
 }
 const defaultContractTemplate=`# Umowa
 Zamówienie {{numer}}

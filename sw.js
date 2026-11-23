@@ -1,5 +1,5 @@
-const cacheName = 'litydab-v0.1.22';
-const assets = ['./index.html','./app.js','./business.js','./install.js','./sharing.js','./sharing-config.js','./polkurier.js','./files.js','./style.css','./manifest.json','./icon.svg','./logo.png','./CHANGELOG.md'];
+const cacheName = 'litydab-v0.1.23';
+const assets = ['./index.html','./app.js','./improvements.js','./business.js','./install.js','./sharing.js','./sharing-config.js','./polkurier.js','./files.js','./style.css','./manifest.json','./icon.svg','./logo.png','./CHANGELOG.md'];
 self.addEventListener('install', e => e.waitUntil(caches.open(cacheName).then(c => c.addAll(assets)).then(()=>self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith('litydab-') && k !== cacheName).map(k => caches.delete(k)))) .then(()=>self.clients.claim())));
 self.addEventListener('fetch', e => {

@@ -51,27 +51,33 @@ function expenseEditor(expenseId) {
   const allocations=expense.allocations??(expense.order?[{orderId:expense.order,amount:Number(expense.amount)}]:[]);
   $('main').innerHTML='<h1>'+esc(existing?'Edytuj wydatek':'Nowy wydatek')+'</h1>'+button('finance','Wróć do kosztów')+
     '<form id="expenseEditor">'+group('Wydatek rzeczywisty',grid(input('date','Data wydatku',expense.date,'date','required')+
-      input('name','Opis / kategoria',expense.name,'text','required')+num('amount','Łączna kwota (zł)',expense.amount,0.01)+
+      input('name','Nazwa',expense.name,'text','required')+num('quantity','Ilość',expense.quantity||1,0.01)+num('unitPrice','Cena jednostkowa (zł)',Number(expense.amount)/(expense.quantity||1),0)+num('amount','Łączna kwota (zł)',expense.amount,0.01)+
       input('supplier','Sprzedawca',expense.supplier)+input('invoiceNumber','Numer faktury',expense.invoiceNumber)))+
     group('Podział na zamówienia','<p>Wpisz kwoty przypisane do zamówień. Pozostała część będzie wydatkiem ogólnym.</p>'+
-      button('splitExpense','Podziel równo między zaznaczone')+
+      '<div class="right-actions">'+button('splitExpense','Podziel równo między zaznaczone')+'</div>'+
       table(['Podział równy','Zamówienie','Kwota (zł)'],orderList.map(o=>[
         '<input type="checkbox" name="split_'+esc(o.id)+'" aria-label="Uwzględnij '+esc(o.number)+'">',
-        esc(o.number)+' · '+esc(person(o.client)),input('allocation_'+o.id,'Kwota dla '+o.number,allocations.find(a=>a.orderId===o.id)?.amount||'','number','min="0" step="0.01"')
+        esc(o.number)+' · '+esc(person(o.client)),'<input name="allocation_'+esc(o.id)+'" aria-label="Kwota dla '+esc(o.number)+'" value="'+esc(allocations.find(a=>a.orderId===o.id)?.amount||'')+'" type="number" min="0" step="0.01">'
       ]))+'<output id="allocationStatus" role="status"></output>')+
     group('Faktury','<label>Załącz PDF lub zdjęcie <input id="invoiceFiles" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple></label><div id="invoiceList">'+
       (expense.invoices||[]).map(file=>'<p>'+esc(file.name)+' '+button('invoiceDownload','Pobierz',file.storageKey)+'</p>').join('')+'</div>')+
     '<button>Zapisz wydatek</button></form>';
   const form=$('expenseEditor'),scope=key();
+  form.elements.unitPrice.step='any';
   const readAllocations=()=>orderList.map(o=>({orderId:o.id,amount:Number(form.elements.namedItem('allocation_'+o.id).value||0)})).filter(a=>a.amount>0);
   function update(){
     const total=Number(form.elements.amount.value),sum=allocationSum({allocations:readAllocations()});
     $('allocationStatus').textContent='Przypisano '+money(sum)+' · wydatek ogólny '+money(total-sum);
   }
-  form.oninput=update;update();
+  form.oninput=event=>{
+    const quantity=Number(form.elements.quantity.value);
+    if(event.target.name==='amount'&&quantity>0)form.elements.unitPrice.value=(Number(form.elements.amount.value)/quantity).toFixed(4);
+    if(['quantity','unitPrice'].includes(event.target.name))form.elements.amount.value=(quantity*Number(form.elements.unitPrice.value)).toFixed(2);
+    update();
+  };update();
   form.onsubmit=async e=>{
     e.preventDefault();
-    const v=values(form),item={...expense,id:expense.id||id(),date:v.date,name:v.name,supplier:v.supplier,invoiceNumber:v.invoiceNumber,amount:Number(v.amount),order:'',allocations:readAllocations(),invoices:[...(expense.invoices||[])]};
+    const v=values(form),item={...expense,id:expense.id||id(),date:v.date,name:v.name,supplier:v.supplier,invoiceNumber:v.invoiceNumber,amount:Number(v.amount),quantity:Number(v.quantity),unitPrice:Number(v.amount)/Number(v.quantity),order:'',allocations:readAllocations(),invoices:[...(expense.invoices||[])]};
     if(!allocationsValid(item)){alert('Suma przydzielonych kwot przekracza wartość wydatku.');return;}
     const files=Array.from($('invoiceFiles').files);
     if(files.some(file=>!['application/pdf','image/jpeg','image/png','image/webp'].includes(file.type)||file.size>25*1024*1024)){alert('Załącz PDF lub zdjęcie do 25 MB.');return;}

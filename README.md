@@ -24,7 +24,7 @@ Koszt zamówienia to suma wydatków przypisanych do niego w finansach. Dochód t
 
 
 
-## Zmiany w v0.1.22
+## Zmiany w v0.1.23
 
 Lista zamówień ma edytowalne statusy i podsumowanie zgodne z filtrem. Koszt szacowany pochodzi z formularza. Rzeczywiste wydatki pokazane są osobno. W Koszty i przychody przycisk Dodaj wydatek rzeczywisty otwiera formularz z datą, opisem, kwotą, numerem faktury i sprzedawcą. Wydatek można podzielić kwotowo lub równo na zaznaczone zamówienia. Pozostała część jest kosztem ogólnym. Podział zachowuje sumę co do grosza. Dostępna jest edycja wcześniejszych wydatków.
 
@@ -35,3 +35,8 @@ Folder faktur wybiera się w ustawieniach. Wybierz folder z dysku Google Drive s
 Na iOS Safari i aplikacja z ikony mają oddzielny zapis. W Ustawienia / Skrót na pulpit i przeniesienie danych przycisk Dodaj skrót na pulpit pobiera kopię przed instalacją. Na iPhonie kończysz instalację przez Udostępnij / Dodaj do ekranu głównego. Przy pierwszym uruchomieniu z ikony pojawia się ekran przeniesienia danych. Wczytaj plik w tej sekcji albo otwórz wspólną bazę przez logowanie Supabase. Kopia przeniesienia obejmuje ustawienia wyglądu, publiczną konfigurację Supabase i bieżącą bazę. Dotychczasowe dane pozostają w Safari. Instalacja i synchronizacja na fizycznym iPhonie wymagają testu użytkownika.
 
 Usunięcie klienta zachowuje dane klienta w historycznych zamówieniach. Usunięte dane są także w lokalnej kopii archiwalnej.
+
+
+Wersja 0.1.23 używa tych samych lokalnych baz i ustawień przeglądarki. Uruchom na dotychczasowym adresie http://127.0.0.1:8791, aby zachować dostęp do lokalnej bazy. Dane klienta synchronizują się po zapisaniu formularza.
+
+Pełne ścieżki folderów wpisz w ustawieniach po skopiowaniu z Eksploratora. Przeglądarka przekazuje aplikacji nazwę i uchwyt wybranego folderu. Daty w formularzach wpisuj w formacie DD.MM.YYYY.
