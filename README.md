@@ -1,4 +1,4 @@
-# Lity Dąb Backoffice v0.1.24
+# Lity Dąb Backoffice v0.1.25
 
 Otwórz index.html w Edge lub Chrome, aby wypróbować wersję demonstracyjną. Zapis danych dla plików otwieranych bezpośrednio zależy od przeglądarki. Do stałego użytku uruchom aplikację pod stałym adresem localhost lub HTTPS. Service worker działa na localhost/HTTPS. Zmiana adresu, portu lub profilu przeglądarki zmienia miejsce przechowywania danych.
 
@@ -41,7 +41,7 @@ Wersja 0.1.23 używa tych samych lokalnych baz i ustawień przeglądarki. Urucho
 
 Pełne ścieżki folderów wpisz w ustawieniach po skopiowaniu z Eksploratora. Przeglądarka przekazuje aplikacji nazwę i uchwyt wybranego folderu. Daty w formularzach wpisuj w formacie DD.MM.YYYY.
 
-## Aktualizacja PWA i ikony w v0.1.24
+## Aktualizacja PWA i ikony w v0.1.25
 
 Na GitHub Pages podmień komplet plików z tej paczki, w tym sw.js, pwa.js, manifest.json, menu-icons.jpg, favicon.ico i app-icon-*.png. Zachowaj ten sam adres repozytorium i strony, aby nie zmieniać magazynu danych.
 

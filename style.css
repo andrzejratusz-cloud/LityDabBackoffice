@@ -98,3 +98,9 @@ header nav button{display:inline-flex;align-items:center;justify-content:center;
 header nav .menu-icon-0{background-position-x:-9.6px}header nav .menu-icon-1{background-position-x:-43.6px}header nav .menu-icon-2{background-position-x:-77.4px}header nav .menu-icon-4{background-position-x:-111.3px}header nav .menu-icon-3{background-position-x:-145.2px}
 #pwaUpdate{position:fixed;bottom:16px;left:16px;right:16px;z-index:10000;padding:14px;background:var(--surface,#fff);color:var(--ink,#222);border:2px solid var(--accent,#24609a);border-radius:10px;box-shadow:0 4px 20px #0003}#pwaUpdate button{margin-left:10px}#appIconPreview{vertical-align:middle;object-fit:contain}
 @media print{#pwaUpdate{display:none}}
+
+/* Compact order actions, kept in one row. */
+.order-toolbar{display:grid;grid-template-columns:minmax(0,240px) max-content max-content;align-items:center;justify-content:start;gap:8px}
+.order-toolbar input{width:100%;min-width:0;max-width:240px}
+.order-toolbar button{margin:0;white-space:nowrap}
+@media(max-width:600px){.order-toolbar{grid-template-columns:minmax(0,1fr) max-content max-content;gap:6px}.order-toolbar input,.order-toolbar button{font-size:11px;padding:7px 6px;height:34px}}

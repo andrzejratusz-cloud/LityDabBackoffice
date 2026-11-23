@@ -1,3 +1,7 @@
+# v0.1.25
+
+- Krótsza wyszukiwarka, przełącznik adresów i nowe zamówienie w jednym rzędzie.
+
 # v0.1.24
 
 - Favicon ICO/PNG w ustawieniach, osobna ikona PWA i Apple Touch Icon.

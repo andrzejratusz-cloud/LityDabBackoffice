@@ -1,4 +1,4 @@
-const cacheName='litydab-v0.1.24';
+const cacheName='litydab-v0.1.25';
 const assets=["index.html","app.js","pwa.js","improvements.js","business.js","install.js","sharing.js","sharing-config.js","polkurier.js","files.js","style.css","manifest.json","icon.svg","logo.png","favicon.ico","app-icon-180.png","app-icon-192.png","app-icon-512.png","menu-icons.jpg","CHANGELOG.md"];
 const scope=self.registration.scope;
 const assetURLs=assets.map(name=>new URL(name,scope).href);
